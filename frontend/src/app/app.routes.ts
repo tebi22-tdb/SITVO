@@ -54,5 +54,13 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./pages/verificar-documento/verificar-documento.component').then((m) => m.VerificarDocumentoComponent),
   },
+  {
+    path: 'servicios-escolares',
+    loadComponent: () =>
+      import('./pages/servicios-escolares/servicios-escolares-placeholder.component').then(
+        (m) => m.ServiciosEscolaresPlaceholderComponent,
+      ),
+    canActivate: [authGuard],
+  },
   { path: '**', redirectTo: 'login' },
 ];
