@@ -1,0 +1,99 @@
+.verificar-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f7fa;
+  padding: 24px;
+}
+
+.verificar-card {
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+  max-width: 580px;
+  width: 100%;
+  overflow: hidden;
+}
+
+.verificar-header {
+  background: #264f8c;
+  color: #fff;
+  padding: 24px 28px 20px;
+}
+
+.verificar-header h2 {
+  margin: 0 0 6px;
+  font-size: 1.4rem;
+}
+
+.verificar-subtitulo {
+  margin: 0;
+  font-size: 0.88rem;
+  opacity: 0.85;
+}
+
+.verificar-estado {
+  padding: 28px;
+  color: #555;
+  text-align: center;
+}
+
+.verificar-resultado {
+  padding: 28px;
+}
+
+.verificar-resultado h3 {
+  margin: 8px 0 18px;
+  font-size: 1.15rem;
+}
+
+.verificar-icono {
+  font-size: 2rem;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.verificar-valido {
+  border-top: 4px solid #2a9461;
+}
+
+.verificar-valido .verificar-icono,
+.verificar-valido h3 {
+  color: #2a9461;
+}
+
+.verificar-invalido {
+  border-top: 4px solid #c0392b;
+}
+
+.verificar-invalido .verificar-icono,
+.verificar-invalido h3 {
+  color: #c0392b;
+}
+
+.verificar-tabla {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 16px;
+}
+
+.verificar-tabla th,
+.verificar-tabla td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+  font-size: 0.95rem;
+}
+
+.verificar-tabla th {
+  color: #555;
+  font-weight: 600;
+  width: 42%;
+}
+
+.verificar-id {
+  font-size: 0.82rem;
+  color: #888;
+  margin-top: 12px;
+}

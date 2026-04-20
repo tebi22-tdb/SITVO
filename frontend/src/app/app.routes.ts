@@ -49,5 +49,10 @@ export const routes: Routes = [
       import('./pages/departamento-academico/departamento-academico.component').then((m) => m.DepartamentoAcademicoComponent),
     canActivate: [academicoGuard],
   },
+  {
+    path: 'verificar/:uuid',
+    loadComponent: () =>
+      import('./pages/verificar-documento/verificar-documento.component').then((m) => m.VerificarDocumentoComponent),
+  },
   { path: '**', redirectTo: 'login' },
 ];

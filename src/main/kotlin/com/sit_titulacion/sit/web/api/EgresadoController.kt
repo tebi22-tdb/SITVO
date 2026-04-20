@@ -169,13 +169,14 @@ class EgresadoController(
         else ResponseEntity.notFound().build<Void>()
     }
 
-    /** Descarga/visualiza el documento adjunto del egresado (PDF/Word). Solo rol academico. */
+    /** Descarga/visualiza el documento adjunto del egresado (PDF/Word). Roles: academico, coordinador. */
     @GetMapping("/{id}/documento")
     fun obtenerDocumento(
         @PathVariable id: String,
         @AuthenticationPrincipal principal: UsuarioPrincipal?,
     ): ResponseEntity<*> {
-        if (principal == null || principal.getRol().trim().lowercase() != "academico") {
+        val rol = principal?.getRol()?.trim()?.lowercase()
+        if (principal == null || rol !in listOf("academico", "coordinador")) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build<Void>()
         }
         val doc = egresadoService.obtenerDocumentoAdjunto(id) ?: return ResponseEntity.notFound().build<Void>()

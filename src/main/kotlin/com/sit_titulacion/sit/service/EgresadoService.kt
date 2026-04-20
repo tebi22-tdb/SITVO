@@ -66,6 +66,7 @@ class EgresadoService(
     private val env: Environment,
     private val htmlAnexoPdfService: HtmlAnexoPdfService,
     private val revisionService: RevisionService,
+    private val certService: CertificacionPdfService,
 ) {
     private val log = LoggerFactory.getLogger(EgresadoService::class.java)
 
@@ -361,12 +362,36 @@ class EgresadoService(
         val e = egresadoRepository.findById(objectId).orElse(null) ?: return false
         if (e.fechaEnviadoDepartamentoAcademico != null) return false
         val ahora = Instant.now()
-        egresadoRepository.save(
-            e.copy(
-                fechaEnviadoDepartamentoAcademico = ahora,
-                fecha_actualizacion = ahora,
-            ),
+
+        // Guardar timestamp primero: debe persistir aunque la certificación falle
+        val enviado = e.copy(
+            fechaEnviadoDepartamentoAcademico = ahora,
+            fecha_actualizacion = ahora,
         )
+        egresadoRepository.save(enviado)
+
+        // Certificar solo para Residencia Profesional
+        if (esResidenciaProfesional(e)) {
+            try {
+                val resultado = certService.certificarDocumento(e)
+                if (resultado != null) {
+                    egresadoRepository.save(
+                        enviado.copy(
+                            documento_adjunto = enviado.documento_adjunto.copy(gridfs_id = resultado.nuevoGridFsId),
+                            cert_uuid = resultado.certUuid,
+                            cert_hash = resultado.certHash,
+                            fechaCertificacion = ahora,
+                            fecha_actualizacion = Instant.now(),
+                        ),
+                    )
+                } else {
+                    log.warn("Certificacion no completada para egresado id={}: documento faltante o no PDF", id)
+                }
+            } catch (ex: Exception) {
+                log.error("Error al certificar documento para egresado id={}: {}", id, ex.message, ex)
+            }
+        }
+
         return true
     }
 

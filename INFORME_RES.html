@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Informe Técnico de Residencia Profesional – SIT</title>
+  <style>
+    /* ─── Variables de color ─── */
+    :root {
+      --azul:       #1a3a6b;
+      --azul-medio: #2563a8;
+      --azul-claro: #dbeafe;
+      --acento:     #0ea5e9;
+      --verde:      #166534;
+      --verde-claro:#dcfce7;
+      --gris-fondo: #f8fafc;
+      --gris-borde: #cbd5e1;
+      --gris-texto: #475569;
+      --negro:      #1e293b;
+      --blanco:     #ffffff;
+      --rojo-claro: #fee2e2;
+      --rojo:       #991b1b;
+    }
+
+    /* ─── Reset & base ─── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 10.5pt;
+      color: var(--negro);
+      background: #e8edf4;
+      line-height: 1.6;
+    }
+
+    /* ─── Página ─── */
+    .page {
+      width: 21cm;
+      min-height: 29.7cm;
+      background: var(--blanco);
+      margin: 0 auto;
+      padding: 0;
+      box-shadow: 0 4px 24px rgba(0,0,0,.18);
+    }
+
+    /* ─── Portada ─── */
+    .cover {
+      background: linear-gradient(160deg, var(--azul) 0%, var(--azul-medio) 60%, var(--acento) 100%);
+      color: var(--blanco);
+      padding: 3.2cm 2.2cm 2.4cm;
+      position: relative;
+      overflow: hidden;
+    }
+    .cover::before {
+      content: '';
+      position: absolute;
+      top: -60px; right: -60px;
+      width: 260px; height: 260px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.06);
+    }
+    .cover::after {
+      content: '';
+      position: absolute;
+      bottom: -40px; left: -40px;
+      width: 180px; height: 180px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.05);
+    }
+    .cover-tag {
+      display: inline-block;
+      background: rgba(255,255,255,.18);
+      border: 1px solid rgba(255,255,255,.35);
+      border-radius: 4px;
+      font-size: 8pt;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      margin-bottom: 1.4cm;
+    }
+    .cover h1 {
+      font-size: 22pt;
+      font-weight: 700;
+      line-height: 1.25;
+      margin-bottom: .4cm;
+    }
+    .cover h2 {
+      font-size: 13pt;
+      font-weight: 400;
+      opacity: .88;
+      margin-bottom: 1.4cm;
+    }
+    .cover-meta {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 6px 14px;
+      font-size: 9.5pt;
+      opacity: .92;
+    }
+    .cover-meta .label { opacity: .72; text-transform: uppercase; font-size: 8pt; letter-spacing: .06em; }
+    .cover-divider {
+      height: 3px;
+      background: linear-gradient(90deg, var(--acento), transparent);
+      margin: 1.4cm 0 0;
+      border-radius: 2px;
+    }
+
+    /* ─── Cuerpo ─── */
+    .body-content {
+      padding: 1.2cm 2cm 2cm;
+    }
+
+    /* ─── Secciones ─── */
+    .section { margin-bottom: 1.2cm; }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 2.5px solid var(--azul-medio);
+      padding-bottom: 6px;
+      margin-bottom: .7cm;
+    }
+    .section-num {
+      background: var(--azul);
+      color: var(--blanco);
+      font-size: 9pt;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 4px;
+      min-width: 30px;
+      text-align: center;
+    }
+    .section-title {
+      font-size: 13.5pt;
+      font-weight: 700;
+      color: var(--azul);
+    }
+
+    .subsection-title {
+      font-size: 11pt;
+      font-weight: 700;
+      color: var(--azul-medio);
+      margin: .7cm 0 .3cm;
+      padding-left: 10px;
+      border-left: 3px solid var(--acento);
+    }
+
+    p { margin-bottom: .4cm; }
+
+    /* ─── Tablas ─── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 9.5pt;
+      margin-bottom: .7cm;
+    }
+    thead tr {
+      background: var(--azul);
+      color: var(--blanco);
+    }
+    thead th {
+      padding: 8px 12px;
+      text-align: left;
+      font-weight: 600;
+      letter-spacing: .04em;
+    }
+    tbody tr:nth-child(odd)  { background: var(--blanco); }
+    tbody tr:nth-child(even) { background: var(--azul-claro); }
+    tbody td {
+      padding: 7px 12px;
+      border-bottom: 1px solid var(--gris-borde);
+      vertical-align: top;
+    }
+    tbody tr:hover { background: #bfdbfe; }
+
+    /* tabla de problema (3 columnas con colores) */
+    .tbl-problema thead { background: var(--azul); }
+    .tbl-problema .col-sin  { background: #fef9c3; color: #713f12; }
+    .tbl-problema .col-con  { background: var(--verde-claro); color: var(--verde); }
+
+    /* ─── Bloques de código ─── */
+    .code-block {
+      background: #0f172a;
+      color: #e2e8f0;
+      border-radius: 6px;
+      padding: 14px 16px;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 8.5pt;
+      line-height: 1.55;
+      overflow-x: auto;
+      margin-bottom: .7cm;
+      border-left: 4px solid var(--acento);
+      white-space: pre;
+    }
+    .code-block .comment   { color: #64748b; }
+    .code-block .keyword   { color: #93c5fd; font-weight: bold; }
+    .code-block .string    { color: #86efac; }
+    .code-block .number    { color: #fca5a5; }
+    .code-block .func      { color: #fde68a; }
+    .code-block .type      { color: #a78bfa; }
+    .code-block .prop      { color: #f0abfc; }
+    .code-block .arrow     { color: var(--acento); }
+
+    .code-label {
+      display: inline-block;
+      background: var(--azul-medio);
+      color: var(--blanco);
+      font-size: 7.5pt;
+      font-weight: 600;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      padding: 2px 8px;
+      border-radius: 4px 4px 0 0;
+      margin-bottom: 0;
+    }
+
+    /* diagrama de flujo textual */
+    .code-block.flow { border-left-color: #34d399; }
+    .code-block.diagram { border-left-color: #818cf8; }
+
+    /* JSON */
+    .code-block.json { border-left-color: #fb923c; }
+
+    /* properties */
+    .code-block.props { border-left-color: #f472b6; }
+
+    /* ─── Callouts ─── */
+    .callout {
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin-bottom: .7cm;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      font-size: 9.5pt;
+    }
+    .callout-icon { font-size: 15pt; line-height: 1; flex-shrink: 0; }
+    .callout.info   { background: var(--azul-claro);  border-left: 4px solid var(--azul-medio); }
+    .callout.warn   { background: #fef3c7;             border-left: 4px solid #d97706; }
+    .callout.danger { background: var(--rojo-claro);   border-left: 4px solid var(--rojo); }
+    .callout.ok     { background: var(--verde-claro);  border-left: 4px solid #16a34a; }
+
+    /* ─── Badge inline ─── */
+    .badge {
+      display: inline-block;
+      font-size: 8pt;
+      font-weight: 600;
+      padding: 1px 7px;
+      border-radius: 20px;
+    }
+    .badge-azul  { background: var(--azul-claro);  color: var(--azul); }
+    .badge-verde { background: var(--verde-claro); color: var(--verde); }
+
+    /* ─── Código inline ─── */
+    code {
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 8.5pt;
+      background: #f1f5f9;
+      border: 1px solid var(--gris-borde);
+      border-radius: 3px;
+      padding: 1px 5px;
+      color: #be185d;
+    }
+
+    /* ─── Lista de items ─── */
+    ul, ol {
+      padding-left: 1.4em;
+      margin-bottom: .4cm;
+    }
+    li { margin-bottom: 3px; }
+
+    /* ─── Paso numerado ─── */
+    .steps { counter-reset: step; margin-bottom: .7cm; }
+    .step {
+      display: flex;
+      gap: 12px;
+      margin-bottom: .4cm;
+      align-items: flex-start;
+    }
+    .step-num {
+      flex-shrink: 0;
+      width: 24px; height: 24px;
+      background: var(--azul-medio);
+      color: var(--blanco);
+      border-radius: 50%;
+      font-size: 9pt;
+      font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* ─── Capturas de pantalla (sección 9) ─── */
+    .screenshot-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: .7cm;
+    }
+    .screenshot-card {
+      background: var(--gris-fondo);
+      border: 1px solid var(--gris-borde);
+      border-radius: 6px;
+      padding: 12px;
+    }
+    .screenshot-card .num {
+      font-size: 8pt;
+      font-weight: 700;
+      color: var(--azul-medio);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 4px;
+    }
+    .screenshot-card .title { font-weight: 600; font-size: 10pt; margin-bottom: 4px; }
+    .screenshot-card .desc  { font-size: 9pt; color: var(--gris-texto); }
+
+    /* ─── Conclusiones ─── */
+    .conclusion-card {
+      background: linear-gradient(135deg, var(--azul-claro), #e0f2fe);
+      border: 1px solid var(--azul-medio);
+      border-radius: 8px;
+      padding: 16px 18px;
+      margin-bottom: .5cm;
+    }
+    .conclusion-card h4 {
+      color: var(--azul);
+      font-size: 10.5pt;
+      margin-bottom: 6px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    /* ─── Footer ─── */
+    .footer {
+      background: var(--azul);
+      color: rgba(255,255,255,.7);
+      font-size: 8pt;
+      text-align: center;
+      padding: 10px 2cm;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* ─── Impresión ─── */
+    @media print {
+      body { background: none; font-size: 10pt; }
+      .page { box-shadow: none; width: 100%; margin: 0; }
+      .section { page-break-inside: avoid; }
+      .code-block { page-break-inside: avoid; }
+      table { page-break-inside: avoid; }
+      .screenshot-grid { page-break-inside: avoid; }
+      @page { margin: 0; size: A4; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ══════════════════════════════════════════════════ PORTADA -->
+  <div class="cover">
+    <div class="cover-tag">Residencia Profesional &nbsp;·&nbsp; Informe Técnico</div>
+    <h1>Implementación de Sistema de<br>Certificación Digital de Documentos</h1>
+    <h2>Módulo PKI + Verificación por QR para documentos académicos</h2>
+    <div class="cover-meta">
+      <span class="label">Sistema</span>     <span>SIT — Sistema Integral de Titulación del Valle de Oaxaca</span>
+      <span class="label">Institución</span> <span>TECNM Campus Oaxaca</span>
+      <span class="label">Módulo</span>      <span>Certificación PKI + Verificación por código QR</span>
+      <span class="label">Fecha</span>       <span>Abril 2026</span>
+    </div>
+    <div class="cover-divider"></div>
+  </div>
+
+  <div class="body-content">
+
+    <!-- ══════════════════════════════════════════════ 1. INTRODUCCIÓN -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-num">1</span>
+        <span class="section-title">Introducción</span>
+      </div>
+      <p>
+        Durante el desarrollo de la plataforma SIT se identificó la necesidad de garantizar la autenticidad
+        e integridad de los documentos PDF que los egresados cargan al sistema como parte de su proceso de
+        titulación. Sin un mecanismo de certificación, cualquier persona podría modificar un documento
+        descargado y volver a presentarlo como original, sin que existiera forma de detectar la alteración.
+      </p>
+      <p>
+        Para resolver este problema se diseñó e implementó un módulo de certificación digital que combina
+        dos tecnologías complementarias: <strong>firma digital PKI</strong> (infraestructura de clave pública)
+        y <strong>código QR de verificación</strong>, cubriendo tanto el escenario digital como el escenario
+        de documentos impresos en papel.
+      </p>
+    </div>
+
+    <!-- ══════════════════════════════════════════════ 2. PROBLEMA -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-num">2</span>
+        <span class="section-title">Problema que resuelve</span>
+      </div>
+      <table class="tbl-problema">
+        <thead>
+          <tr>
+            <th>Escenario</th>
+            <th>Sin certificación</th>
+            <th>Con certificación</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Documento digital</strong></td>
+            <td class="col-sin">Cualquiera puede editar el PDF</td>
+            <td class="col-con">La firma PKI invalida el documento si es modificado</td>
+          </tr>
+          <tr>
+            <td><strong>Documento impreso</strong></td>
+            <td class="col-sin">No hay forma de autenticar</td>
+            <td class="col-con">El QR permite verificar autenticidad desde el celular</td>
+          </tr>
+          <tr>
+            <td><strong>Migración de servidor</strong></td>
+            <td class="col-sin">—</td>
+            <td class="col-con">El ID de verificación es independiente de la URL</td>
+          </tr>
+          <tr>
+            <td><strong>Verificación offline</strong></td>
+            <td class="col-sin">—</td>
+            <td class="col-con">Adobe Reader detecta la firma PKI sin internet</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ══════════════════════════════════════════════ 3. ARQUITECTURA -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-num">3</span>
+        <span class="section-title">Arquitectura de la solución</span>
+      </div>
+      <p>
+        La certificación ocurre automáticamente en el backend en dos momentos del flujo de titulación,
+        según la modalidad del egresado:
+      </p>
+
+      <div class="code-label">Flujo — Residencia Profesional</div>
+      <div class="code-block flow">Modalidad: Residencia Profesional
+─────────────────────────────────────────────────────────────────
+Coordinador presiona "Enviar al departamento académico"
+    │
+    ├── 1. Se guarda fecha_enviado_departamento_academico (timestamp)
+    │
+    └── 2. CertificacionPdfService.certificarDocumento()
+            │
+            ├── Lee PDF original desde MongoDB GridFS
+            ├── Calcula SHA-256 del PDF original
+            ├── Genera UUID único (ej. SIT-A3B4-C5D6-E7F8)
+            ├── Genera código QR con URL de verificación
+            ├── Agrega página de certificación al PDF (PDFBox)
+            ├── Firma digitalmente el PDF completo (PKI + Bouncy Castle)
+            ├── Guarda el PDF certificado en GridFS (reemplaza el original)
+            └── Actualiza MongoDB: cert_uuid, cert_hash, fecha_certificacion
+
+Otras modalidades (Tesis, Tesina, CENEVAL, Proyecto de Investigación)
+─────────────────────────────────────────────────────────────────
+Revisor académico presiona "Aprobar" en revisión de documento
+    │
+    └── Mismo proceso de certificación antes de marcar como aprobado</div>
+
+      <div class="subsection-title">Diagrama de componentes</div>
+      <div class="code-label">Arquitectura</div>
+      <div class="code-block diagram">Frontend Angular          Backend Spring Boot          MongoDB
+──────────────────        ────────────────────         ───────
+SeguimientoProcesoComponent
+  │ POST /enviar-departamento-academico
+  │                    EgresadoController
+  │                         │
+  │                    EgresadoService
+  │                    .marcarEnviadoDepartamentoAcademico()
+  │                         │
+  │                    CertificacionPdfService         GridFS
+  │                    .certificarDocumento()    ←──── PDF original
+  │                         │  agregarPaginaCertificacion()
+  │                         │  firmarPdf() [PKI]
+  │                         │                    ────▶ PDF certificado
+  │                         │
+  │                    EgresadoRepository        ────▶ cert_uuid
+  │                                                    cert_hash
+  │                                                    fecha_certificacion
+
+Página pública /verificar/:uuid
+  │ GET /api/verificar/{uuid}
+  │                    VerificacionController
+  │                         │
+  │                    EgresadoRepository        ←──── findByCertUuid()
+  │◀── { valido, nombre, modalidad, fecha }</div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════ 4. TECNOLOGÍAS -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-num">4</span>
+        <span class="section-title">Tecnologías utilizadas</span>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Tecnología</th><th>Versión</th><th>Uso en el módulo</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Apache PDFBox</strong></td>
+            <td><span class="badge badge-azul">2.0.x</span></td>
+            <td>Manipulación de PDF: agregar páginas, dibujar contenido, firma digital</td>
+          </tr>
+          <tr>
+            <td><strong>Bouncy Castle</strong></td>
+            <td><span class="badge badge-azul">1.78.1</span></td>
+            <td>Generación de certificado X.509 autofirmado, firma CMS/PKCS#7</td>
+          </tr>
+          <tr>
+            <td><strong>ZXing</strong></td>
+            <td><span class="badge badge-azul">3.5.3</span></td>
+            <td>Generación del código QR en formato PNG</td>
+          </tr>
+          <tr>
+            <td><strong>MongoDB GridFS</strong></td>
+            <td><span class="badge badge-azul">—</span></td>
+            <td>Almacenamiento del PDF certificado</td>
+          </tr>
+          <tr>
+            <td><strong>Spring Boot Security</strong></td>
+            <td><span class="badge badge-azul">4.0.x</span></td>
+            <td>Control de acceso: endpoint de verificación público, demás protegidos</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ══════════════════════════════════════════════ 5. ARCHIVOS -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-num">5</span>
+        <span class="section-title">Archivos creados y modificados</span>
+      </div>
+
+      <div class="subsection-title">Archivos nuevos</div>
+      <table>
+        <thead>
+          <tr><th>Archivo</th><th>Descripción</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>service/CertificacionPdfService.kt</code></td>
+            <td>Servicio principal: genera página de certificación, firma PKI, gestiona GridFS</td>
+          </tr>
+          <tr>
+            <td><code>web/api/VerificacionController.kt</code></td>
+            <td>Endpoint público <code>GET /api/verificar/{uuid}</code> sin autenticación</td>
+          </tr>
+          <tr>
+            <td><code>pages/verificar-documento/…component.ts</code></td>
+            <td>Componente Angular de la página de verificación pública</td>
+          </tr>
+          <tr>
+            <td><code>pages/verificar-documento/…component.html</code></td>
+            <td>Vista HTML de la página de verificación</td>
+          </tr>
+          <tr>
+            <td><code>pages/verificar-documento/…component.css</code></td>
+            <td>Estilos de la página de verificación</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="subsection-title">Archivos modificados</div>
+      <table>
+        <thead>
+          <tr><th>Archivo</th><th>Cambio realizado</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>build.gradle.kts</code></td>
+            <td>Agregadas dependencias: Bouncy Castle, ZXing</td>
+          </tr>
+          <tr>
+            <td><code>domain/Egresado.kt</code></td>
+            <td>Nuevos campos: <code>cert_uuid</code>, <code>cert_hash</code>, <code>fecha_certificacion</code></td>
+          </tr>
+          <tr>
+            <td><code>repository/EgresadoRepository.kt</code></td>
+            <td>Nuevo método: <code>findByCertUuid()</code></td>
+          </tr>
+          <tr>
+            <td><code>service/EgresadoService.kt</code></td>
+            <td>Llama a certificación en <code>marcarEnviadoDepartamentoAcademico()</code> para Residencia Profesional</td>
+          </tr>
+          <tr>
+            <td><code>service/RevisionService.kt</code></td>
+            <td>Llama a certificación al aprobar en otras modalidades</td>
+          </tr>
+          <tr>
+            <td><code>config/SecurityConfig.kt</code></td>
+            <td>Permite <code>/api/verificar/**</code> sin autenticación</td>
+          </tr>
+          <tr>
+            <td><code>resources/application.properties</code></td>
+            <td>Nuevas propiedades: keystore PKI, URL base del QR</td>
+          </tr>
+          <tr>
+            <td><code>frontend/app.routes.ts</code></td>
+            <td>Nueva ruta pública <code>/verificar/:uuid</code> sin guard</td>
+          </tr>
+          <tr>
+            <td><code>web/api/EgresadoController.kt</code></td>
+            <td>Endpoint de descarga de documento extendido al rol coordinador</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ══════════════════════════════════════════════ 6. TÉCNICO -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-num">6</span>
+        <span class="section-title">Descripción técnica detallada</span>
+      </div>
+
+      <!-- 6.1 -->
+      <div class="subsection-title">6.1 &nbsp;Generación del certificado PKI autofirmado</div>
+      <p>
+        Al iniciar el servidor por primera vez, <code>CertificacionPdfService</code> verifica si existe el
+        archivo <code>sit-keystore.p12</code> en el directorio home del servidor. Si no existe, lo genera automáticamente
+        con las siguientes características:
+      </p>
+      <table>
+        <thead><tr><th>Parámetro</th><th>Valor</th></tr></thead>
+        <tbody>
+          <tr><td>Algoritmo de clave</td><td>RSA 2048 bits</td></tr>
+          <tr><td>Algoritmo de firma</td><td>SHA-256 with RSA</td></tr>
+          <tr><td>Vigencia</td><td>10 años</td></tr>
+          <tr><td>Formato</td><td>PKCS#12 (.p12)</td></tr>
+          <tr><td>Emisor / Sujeto</td><td>CN=SIT TECNM, O=TECNM Campus Oaxaca, C=MX</td></tr>
+        </tbody>
+      </table>
+      <div class="callout warn">
+        <span class="callout-icon">⚠️</span>
+        <div>Este archivo persiste entre reinicios. Si el servidor se migra, el keystore debe copiarse al
+        nuevo servidor para que las firmas anteriores sigan siendo válidas.</div>
+      </div>
+
+      <!-- 6.2 -->
+      <div class="subsection-title">6.2 &nbsp;Proceso de certificación de un PDF</div>
+      <div class="code-label">Pipeline de certificación</div>
+      <div class="code-block flow">1. LECTURA
+   └─ Se obtiene el gridfs_id del campo documento_adjunto en MongoDB
+   └─ Se descarga el PDF desde MongoDB GridFS a memoria
+
+2. HASH
+   └─ Se calcula el SHA-256 del PDF original (antes de cualquier modificación)
+   └─ Se genera un UUID con formato SIT-XXXX-XXXX-XXXX
+
+3. PÁGINA DE CERTIFICACIÓN
+   └─ PDFBox agrega una nueva página A4 al final del documento
+   └─ Se dibuja: encabezado azul, datos del egresado, ID, código QR, aviso de firma
+   └─ El QR contiene: http://[servidor]/#/verificar/SIT-XXXX-XXXX-XXXX
+
+4. FIRMA PKI
+   └─ El PDF completo (con la página de certificación) se firma digitalmente
+   └─ Tipo de firma: CMS/PKCS#7 detached (adbe.pkcs7.detached)
+   └─ Filtro: Adobe.PPKLite (estándar reconocido por Adobe Reader)
+   └─ La firma se embebe en el PDF mediante guardado incremental
+
+5. ALMACENAMIENTO
+   └─ El PDF certificado se sube a GridFS → certificado_[numero_control].pdf
+   └─ Se elimina el PDF original de GridFS
+   └─ Se actualiza el documento en MongoDB:
+       cert_uuid: "SIT-XXXX-XXXX-XXXX"
+       cert_hash: "[sha256 del original]"
+       fecha_certificacion: [timestamp]
+       documento_adjunto.gridfs_id: [nuevo ObjectId de GridFS]</div>
+
+      <!-- 6.3 -->
+      <div class="subsection-title">6.3 &nbsp;Código QR y página de verificación</div>
+      <p>
+        El código QR contiene la URL completa de verificación. Al ser escaneado por cualquier dispositivo con
+        cámara, abre el navegador directamente en la página de verificación del sistema SIT, sin necesidad
+        de instalar ninguna aplicación.
+      </p>
+      <p>
+        La página <code>/verificar/:uuid</code> es <strong>completamente pública</strong> — no requiere inicio de
+        sesión. Consulta el endpoint <code>GET /api/verificar/{uuid}</code> que busca en MongoDB por
+        <code>cert_uuid</code> y devuelve:
+      </p>
+      <div class="code-label">Respuesta JSON</div>
+      <div class="code-block json">{
+  "valido":             true,
+  "nombre":            "Carlos Mendez López",
+  "numero_control":    "TINV2-PROY1-2",
+  "modalidad":         "Residencia Profesional",
+  "carrera":           "Ingeniería en Sistemas",
+  "institucion":       "TECNM Campus Oaxaca",
+  "fecha_certificacion": "2026-04-18T01:40:47Z"
+}</div>
+
+      <!-- 6.4 -->
+      <div class="subsection-title">6.4 &nbsp;Integridad del flujo — tolerancia a fallos</div>
+      <div class="callout ok">
+        <span class="callout-icon">✅</span>
+        <div><strong>Principio de diseño crítico:</strong> el proceso de titulación <em>no se interrumpe</em>
+        si la certificación falla. El timestamp de envío se guarda siempre; la certificación ocurre en
+        un bloque <code>try-catch</code> separado.</div>
+      </div>
+      <div class="code-label">EgresadoService.kt — fragmento</div>
+      <div class="code-block"><span class="comment">// Timestamp guardado siempre, independientemente de la certificación</span>
+egresadoRepository.save(enviado)
+
+<span class="keyword">if</span> (esResidenciaProfesional(e)) {
+    <span class="keyword">try</span> {
+        <span class="keyword">val</span> resultado = certService.<span class="func">certificarDocumento</span>(e)
+        <span class="keyword">if</span> (resultado != <span class="keyword">null</span>) {
+            egresadoRepository.<span class="func">save</span>(enviado.<span class="func">copy</span>(
+                cert_uuid = resultado.certUuid, ...
+            ))
+        }
+    } <span class="keyword">catch</span> (ex: Exception) {
+        log.<span class="func">error</span>(<span class="string">"Error al certificar: {}"</span>, ex.message)  <span class="comment">// No lanza excepción</span>
+    }
+}
+<span class="keyword">return</span> <span class="keyword">true</span>  <span class="comment">// Siempre retorna true si el egresado existe</span></div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════ 7. BASE DE DATOS -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-num">7</span>
+        <span class="section-title">Campos agregados en la base de datos</span>
+      </div>
+      <p>Colección <code>registro</code> (Egresado) — campos nuevos:</p>
+      <table>
+        <thead>
+          <tr><th>Campo MongoDB</th><th>Tipo</th><th>Descripción</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>cert_uuid</code></td>
+            <td><span class="badge badge-azul">String</span></td>
+            <td>Identificador único de verificación (ej. <code>SIT-A3B4-C5D6-E7F8</code>)</td>
+          </tr>
+          <tr>
+            <td><code>cert_hash</code></td>
+            <td><span class="badge badge-azul">String</span></td>
+            <td>SHA-256 hexadecimal del PDF original antes de certificar</td>
+          </tr>
+          <tr>
+            <td><code>fecha_certificacion</code></td>
+            <td><span class="badge badge-azul">Date</span></td>
+            <td>Timestamp de cuándo se realizó la certificación</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="callout info">
+        <span class="callout-icon">ℹ️</span>
+        <div>Estos campos son <code>null</code> en egresados sin certificación (modalidades aún en revisión o sin documento adjunto).</div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════ 8. CONFIGURACIÓN -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-num">8</span>
+        <span class="section-title">Configuración del sistema</span>
+      </div>
+      <p>Propiedades agregadas en <code>application.properties</code>:</p>
+      <div class="code-label">application.properties</div>
+      <div class="code-block props"><span class="comment"># Ruta al keystore PKCS12 autofirmado (se genera automáticamente si no existe)</span>
+<span class="prop">sit.cert.keystore-path</span>=<span class="string">${user.home}/sit-keystore.p12</span>
+
+<span class="comment"># Contraseña del keystore</span>
+<span class="prop">sit.cert.keystore-password</span>=<span class="string">sit-titulacion-2024</span>
+
+<span class="comment"># URL base pública del sistema (se embebe en el QR del documento certificado)</span>
+<span class="comment"># Al migrar de servidor, actualizar este valor</span>
+<span class="prop">sit.cert.base-url</span>=<span class="string">http://77.37.74.122</span></div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════ 9. CAPTURAS -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-num">9</span>
+        <span class="section-title">Capturas de pantalla recomendadas</span>
+      </div>
+
+      <div class="subsection-title">Backend / Base de datos</div>
+      <div class="screenshot-grid">
+        <div class="screenshot-card">
+          <div class="num">Captura 1</div>
+          <div class="title">Documento en MongoDB Compass</div>
+          <div class="desc">Colección <code>registro</code> — mostrar campos <code>cert_uuid</code>, <code>cert_hash</code> y <code>fecha_certificacion</code> en un documento certificado.</div>
+        </div>
+        <div class="screenshot-card">
+          <div class="num">Captura 2</div>
+          <div class="title">Archivo en GridFS</div>
+          <div class="desc">Colección <code>fs.files</code> — mostrar <code>filename</code>, <code>length</code> y <code>uploadDate</code> del archivo <code>certificado_*.pdf</code>.</div>
+        </div>
+        <div class="screenshot-card">
+          <div class="num">Captura 3</div>
+          <div class="title">Terminal del servidor</div>
+          <div class="desc">Log <code>INFO — Documento certificado: egresado=..., uuid=SIT-...</code> visible al momento de la certificación.</div>
+        </div>
+        <div class="screenshot-card">
+          <div class="num">Captura 4</div>
+          <div class="title">build.gradle.kts</div>
+          <div class="desc">Dependencias de <strong>Bouncy Castle</strong> y <strong>ZXing</strong> visibles en el archivo de configuración del build.</div>
+        </div>
+      </div>
+
+      <div class="subsection-title">Sistema en funcionamiento</div>
+      <div class="screenshot-grid">
+        <div class="screenshot-card">
+          <div class="num">Captura 5</div>
+          <div class="title">Botón "Enviar" en seguimiento-proceso</div>
+          <div class="desc">Pantalla de seguimiento con egresado de Residencia Profesional y el botón "Enviar" visible antes de presionarse.</div>
+        </div>
+        <div class="screenshot-card">
+          <div class="num">Captura 6</div>
+          <div class="title">Página de certificación en PDF</div>
+          <div class="desc">Última página del PDF mostrando sello completo: encabezado azul, datos del egresado, ID de verificación y código QR.</div>
+        </div>
+        <div class="screenshot-card">
+          <div class="num">Captura 7</div>
+          <div class="title">Firma PKI en Adobe Reader</div>
+          <div class="desc">Panel de firmas mostrando "Firmado por SIT TECNM" o badge en la barra superior de Adobe Reader.</div>
+        </div>
+        <div class="screenshot-card">
+          <div class="num">Captura 8</div>
+          <div class="title">Página de verificación — resultado válido</div>
+          <div class="desc">Navegar a <code>/verificar/[UUID]</code> sin sesión activa, mostrando recuadro verde "Documento Válido" con los datos del egresado.</div>
+        </div>
+      </div>
+      <div class="screenshot-card" style="margin-bottom:.7cm">
+        <div class="num">Captura 9 (opcional)</div>
+        <div class="title">Escaneo del QR desde dispositivo móvil</div>
+        <div class="desc">Foto del documento impreso con el sello de certificación, junto a la pantalla del celular mostrando la página de verificación tras escanear el QR.</div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════ 10. CONCLUSIONES -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-num">10</span>
+        <span class="section-title">Conclusiones</span>
+      </div>
+      <p>Se implementó exitosamente un sistema de certificación digital de doble capa para los documentos del proceso de titulación:</p>
+
+      <div class="conclusion-card">
+        <h4>🔐 &nbsp;Capa digital — Firma PKI</h4>
+        <p style="margin:0;font-size:9.5pt">
+          Firma con certificado X.509 autofirmado, verificable en cualquier lector de PDF compatible
+          (Adobe Reader, Evince, navegadores modernos). La firma <strong>invalida el documento si es
+          alterado</strong> después de la certificación.
+        </p>
+      </div>
+
+      <div class="conclusion-card">
+        <h4>📲 &nbsp;Capa física — Código QR imprimible</h4>
+        <p style="margin:0;font-size:9.5pt">
+          Código QR en el propio documento que, al ser escaneado, redirige a una página pública del
+          sistema donde se puede confirmar la autenticidad del documento <strong>sin necesidad de
+          cuenta ni contraseña</strong>.
+        </p>
+      </div>
+
+      <div class="callout ok" style="margin-top:.5cm">
+        <span class="callout-icon">✅</span>
+        <div>
+          El sistema es <strong>robusto ante fallos</strong> (no bloquea el flujo de titulación),
+          <strong>portable entre servidores</strong> (el QR usa URL configurable), y
+          <strong>extensible</strong> (el mismo mecanismo se aplicará a las demás modalidades
+          de titulación cuando el módulo de revisiones quede completado).
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /body-content -->
+
+  <div class="footer">
+    <span>SIT — Sistema Integral de Titulación &nbsp;·&nbsp; TECNM Campus Oaxaca</span>
+    <span>Residencia Profesional &nbsp;·&nbsp; Abril 2026</span>
+  </div>
+
+</div><!-- /page -->
+</body>
+</html>

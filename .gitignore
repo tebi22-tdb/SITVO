@@ -49,3 +49,12 @@ frontend/out-tsc/
 ### Logs y temporales ###
 bootrun-log.txt
 *.log
+
+### Archivos locales ###
+propuesta.md
+INFORME_RES.html
+INFORME_RES.md
+gen_informe.py
+gen_migracion.py
+CLAUDE.md
+.claude/

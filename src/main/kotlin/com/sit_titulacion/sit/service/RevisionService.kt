@@ -8,13 +8,16 @@ import com.sit_titulacion.sit.web.api.dto.RevisionDto
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 import org.bson.types.ObjectId
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 
 @Service
 class RevisionService(
     private val revisionRepository: RevisionRepository,
     private val egresadoRepository: EgresadoRepository,
+    private val certService: CertificacionPdfService,
 ) {
+    private val log = LoggerFactory.getLogger(RevisionService::class.java)
     private val formatter = DateTimeFormatter.ISO_INSTANT
 
     fun crear(egresadoId: String, body: CreateRevisionRequestDto, revisadoPor: String): RevisionDto? {
@@ -39,10 +42,34 @@ class RevisionService(
                     eg.fechaRecibidoRegistroLiberacion == null
                 ) {
                     val ahora = Instant.now()
+
+                    // Intentar certificar el documento antes de marcar como aprobado
+                    var docAdjunto = eg.documento_adjunto
+                    var certUuid: String? = null
+                    var certHash: String? = null
+                    var fechaCert: Instant? = null
+                    try {
+                        val resultado = certService.certificarDocumento(eg)
+                        if (resultado != null) {
+                            docAdjunto = docAdjunto.copy(gridfs_id = resultado.nuevoGridFsId)
+                            certUuid = resultado.certUuid
+                            certHash = resultado.certHash
+                            fechaCert = ahora
+                        } else {
+                            log.warn("Certificacion no completada para egresado id={}: documento faltante o no PDF", egresadoId)
+                        }
+                    } catch (ex: Exception) {
+                        log.error("Error al certificar documento para egresado id={}: {}", egresadoId, ex.message, ex)
+                    }
+
                     egresadoRepository.save(
                         eg.copy(
                             fechaRecibidoRegistroLiberacion = ahora,
                             fecha_actualizacion = ahora,
+                            documento_adjunto = docAdjunto,
+                            cert_uuid = certUuid,
+                            cert_hash = certHash,
+                            fechaCertificacion = fechaCert,
                         ),
                     )
                 }

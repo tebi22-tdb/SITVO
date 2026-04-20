@@ -37,6 +37,7 @@ class SecurityConfig(
                 auth
                     .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                     .requestMatchers("/api/auth/hash").permitAll()
+                    .requestMatchers("/api/verificar/**").permitAll()
                     .requestMatchers("/api/auth/me").authenticated()
                     .requestMatchers("/api/auth/logout").authenticated()
                     .requestMatchers("/api/**").authenticated()

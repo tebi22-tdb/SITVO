@@ -69,4 +69,9 @@ interface EgresadoRepository : MongoRepository<Egresado, ObjectId> {
         sort = "{ 'fecha_agenda_acto_9_3' : 1 }",
     )
     fun findActo93AgendadoEnRango(inicioInclusivo: Instant, finExclusivo: Instant): List<Egresado>
+
+    /** Buscar por UUID de certificación para verificación pública. */
+    @Meta(maxExecutionTimeMs = 5000)
+    @Query("{ 'cert_uuid' : ?0 }")
+    fun findByCertUuid(certUuid: String): Egresado?
 }
