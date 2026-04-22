@@ -167,11 +167,14 @@ class EgresadoController(
         @AuthenticationPrincipal principal: UsuarioPrincipal?,
     ): ResponseEntity<*> {
         if (principal != null) {
-            val rol = principal.getRol().trim().lowercase()
-            when {
-                rol == "academico" -> respuestaSiAcademicoSinCarrera(id, principal)?.let { return it }
-                puedeVerBandejaDepartamento(principal.getRol()) ->
-                    respuestaSiNoAccesoEgresadoBandeja(id, principal)?.let { return it }
+            val rol = principal.getRol().trim().lowercase().replace(' ', '_')
+            // Coordinador accede a cualquier egresado sin restricción de modalidad/carrera
+            if (rol != "coordinador") {
+                when {
+                    rol == "academico" -> respuestaSiAcademicoSinCarrera(id, principal)?.let { return it }
+                    puedeVerBandejaDepartamento(principal.getRol()) ->
+                        respuestaSiNoAccesoEgresadoBandeja(id, principal)?.let { return it }
+                }
             }
         }
         log.info("detalle-egresado: buscando por id={}", id)

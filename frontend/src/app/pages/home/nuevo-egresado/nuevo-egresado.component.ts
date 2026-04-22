@@ -24,6 +24,7 @@ export interface ActualizarEgresadoPayload {
 })
 export class NuevoEgresadoComponent implements OnChanges {
   @Input() egresadoParaEditar: EgresadoDetail | null = null;
+  @Input() guardando = false;
   @Output() cancelar = new EventEmitter<void>();
   @Output() agregar = new EventEmitter<AgregarEgresadoPayload>();
   @Output() actualizar = new EventEmitter<ActualizarEgresadoPayload>();

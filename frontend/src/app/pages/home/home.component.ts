@@ -31,6 +31,7 @@ interface CrearUsuarioStaffForm extends CrearUsuarioBody {
 export class HomeComponent implements OnInit {
   mostrarFormulario = false;
   editando = false;
+  guardando = false;
   mensaje = '';
   lista: EgresadoItem[] = [];
   listaUsuarios: UsuarioStaffItem[] = [];
@@ -175,8 +176,10 @@ export class HomeComponent implements OnInit {
   onAgregar(payload: { datos: EgresadoForm; archivo: File | null }): void {
     this.mensaje = '';
     this.detalle = null;
+    this.guardando = true;
     this.egresadoService.crear(payload.datos, payload.archivo).subscribe({
       next: (res: EgresadoCrearResponse) => {
+        this.guardando = false;
         this.mostrarFormulario = false;
         this.cargarLista();
         if (res.credenciales_enviadas_correo === true) {
@@ -188,6 +191,7 @@ export class HomeComponent implements OnInit {
         }
       },
       error: (err) => {
+        this.guardando = false;
         const msg = err?.error?.error ?? err?.message ?? err?.statusText;
         this.mensaje = msg
           ? `Error al guardar: ${msg}`
@@ -222,8 +226,10 @@ export class HomeComponent implements OnInit {
 
   onActualizar(payload: { id: string; datos: EgresadoForm; archivo: File | null }): void {
     this.mensaje = '';
+    this.guardando = true;
     this.egresadoService.actualizar(payload.id, payload.datos, payload.archivo).subscribe({
       next: () => {
+        this.guardando = false;
         this.editando = false;
         this.egresadoService.obtenerPorId(payload.id).subscribe({
           next: (d) => {
@@ -234,6 +240,7 @@ export class HomeComponent implements OnInit {
         this.mensaje = 'Egresado actualizado correctamente.';
       },
       error: (err) => {
+        this.guardando = false;
         const msg = err?.error?.error ?? err?.message ?? err?.statusText;
         this.mensaje = msg
           ? `Error al actualizar: ${msg}`
