@@ -739,10 +739,15 @@ class EgresadoService(
     }
 
     private fun subirArchivo(archivo: MultipartFile): ObjectId {
+        val bytes = archivo.bytes
+        val isPdf  = bytes.size > 4 && bytes[0] == 0x25.toByte() && bytes[1] == 0x50.toByte() && bytes[2] == 0x44.toByte() && bytes[3] == 0x46.toByte()
+        val isDocx = bytes.size > 4 && bytes[0] == 0x50.toByte() && bytes[1] == 0x4B.toByte() && bytes[2] == 0x03.toByte() && bytes[3] == 0x04.toByte()
+        require(isPdf || isDocx) { "Solo se aceptan archivos PDF o Word (.docx)" }
+        val contentType = if (isPdf) "application/pdf" else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         val id = gridFsTemplate.store(
-            archivo.inputStream,
+            bytes.inputStream(),
             archivo.originalFilename ?: "documento",
-            archivo.contentType ?: "application/octet-stream",
+            contentType,
             null,
         )
         return id as ObjectId

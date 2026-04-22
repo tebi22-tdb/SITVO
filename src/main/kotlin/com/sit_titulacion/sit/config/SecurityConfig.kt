@@ -1,6 +1,7 @@
 package com.sit_titulacion.sit.config
 
 import com.sit_titulacion.sit.security.JwtAuthenticationFilter
+import com.sit_titulacion.sit.security.LoginRateLimitFilter
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpMethod
@@ -21,6 +22,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 @EnableWebSecurity
 class SecurityConfig(
     private val jwtAuthenticationFilter: JwtAuthenticationFilter,
+    private val loginRateLimitFilter: LoginRateLimitFilter,
 ) {
 
     @Bean
@@ -32,12 +34,24 @@ class SecurityConfig(
         http
             .cors { it.configurationSource(corsConfigurationSource()) }
             .csrf { it.disable() }
+            .headers { headers ->
+                headers
+                    .frameOptions { it.deny() }
+                    .contentTypeOptions { }
+                    .httpStrictTransportSecurity { hsts ->
+                        hsts.includeSubDomains(true).maxAgeInSeconds(31536000)
+                    }
+                    .contentSecurityPolicy { csp ->
+                        csp.policyDirectives("default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'")
+                    }
+            }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .authorizeHttpRequests { auth ->
                 auth
                     .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                     .requestMatchers("/api/auth/hash").permitAll()
                     .requestMatchers("/api/verificar/**").permitAll()
+                    .requestMatchers("/dev/**").permitAll()
                     .requestMatchers("/api/auth/me").authenticated()
                     .requestMatchers("/api/auth/logout").authenticated()
                     .requestMatchers("/api/**").authenticated()
@@ -51,6 +65,7 @@ class SecurityConfig(
                         response.writer.write("""{"ok":true}""")
                     }
             }
+            .addFilterBefore(loginRateLimitFilter, UsernamePasswordAuthenticationFilter::class.java)
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
         return http.build()
     }
@@ -62,11 +77,12 @@ class SecurityConfig(
     fun corsConfigurationSource(): CorsConfigurationSource {
         val config = CorsConfiguration().apply {
             allowCredentials = true
-            addAllowedOrigin("http://localhost:4200")
-            addAllowedOriginPattern("https://*")
-            addAllowedOriginPattern("http://*")
-            addAllowedHeader("*")
-            addAllowedMethod("*")
+            allowedOrigins = listOf(
+                "http://localhost:4200",
+                "http://77.37.74.122",
+            )
+            allowedMethods = listOf("GET", "POST", "PUT", "DELETE", "OPTIONS")
+            allowedHeaders = listOf("Content-Type", "Authorization")
             exposedHeaders = listOf("Authorization")
         }
         val source = UrlBasedCorsConfigurationSource()

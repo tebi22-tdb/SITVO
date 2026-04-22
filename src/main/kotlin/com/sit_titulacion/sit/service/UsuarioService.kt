@@ -19,7 +19,8 @@ class UsuarioService(
 
     /** Genera una contraseña aleatoria de 6 dígitos. */
     fun generarPasswordSegura(): String {
-        return (1..6).map { random.nextInt(10) }.joinToString("")
+        val chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$"
+        return (1..12).map { chars[random.nextInt(chars.length)] }.joinToString("")
     }
 
     /**

@@ -1,31 +1,40 @@
 package com.sit_titulacion.sit.web.api.dto
 
 import com.fasterxml.jackson.annotation.JsonProperty
+import jakarta.validation.constraints.NotBlank
+import jakarta.validation.constraints.Size
 
 /** DTOs de la API de egresados (entrada, respuesta, lista y detalle). */
 
 data class EgresadoRequestDto(
+    @field:NotBlank @field:Size(max = 20)
     val numero_control: String,
+    @field:NotBlank @field:Size(max = 100)
     val nombre: String,
-    @JsonProperty("apellido_paterno") val apellidoPaterno: String,
-    @JsonProperty("apellido_materno") val apellidoMaterno: String,
+    @JsonProperty("apellido_paterno") @field:NotBlank @field:Size(max = 100)
+    val apellidoPaterno: String,
+    @JsonProperty("apellido_materno") @field:NotBlank @field:Size(max = 100)
+    val apellidoMaterno: String,
+    @field:NotBlank @field:Size(max = 150)
     val carrera: String,
+    @field:NotBlank @field:Size(max = 50)
     val nivel: String,
-    val direccion: String? = null,
-    val telefono: String? = null,
+    @field:Size(max = 200) val direccion: String? = null,
+    @field:Size(max = 20)  val telefono: String? = null,
     /** Mismo nombre que en JSON (snake_case) para que Jackson lo deserialice bien en multipart. */
-    val correo_electronico: String? = null,
-    @JsonProperty("nombre_proyecto") val nombreProyecto: String? = null,
+    @field:Size(max = 150) val correo_electronico: String? = null,
+    @JsonProperty("nombre_proyecto") @field:Size(max = 300) val nombreProyecto: String? = null,
+    @field:NotBlank @field:Size(max = 100)
     val modalidad: String,
-    @JsonProperty("curso_titulacion") val cursoTitulacion: String? = null,
-    @JsonProperty("asesor_interno") val asesorInterno: String? = null,
-    @JsonProperty("asesor_externo") val asesorExterno: String? = null,
-    val director: String? = null,
-    @JsonProperty("asesor_1") val asesor1: String? = null,
-    @JsonProperty("asesor_2") val asesor2: String? = null,
-    @JsonProperty("fecha_registro_anexo") val fechaRegistroAnexo: String? = null,
-    @JsonProperty("fecha_expedicion_constancia") val fechaExpedicionConstancia: String? = null,
-    val observaciones: String? = null,
+    @JsonProperty("curso_titulacion")  @field:Size(max = 100) val cursoTitulacion: String? = null,
+    @JsonProperty("asesor_interno")    @field:Size(max = 150) val asesorInterno: String? = null,
+    @JsonProperty("asesor_externo")    @field:Size(max = 150) val asesorExterno: String? = null,
+    @field:Size(max = 150) val director: String? = null,
+    @JsonProperty("asesor_1") @field:Size(max = 150) val asesor1: String? = null,
+    @JsonProperty("asesor_2") @field:Size(max = 150) val asesor2: String? = null,
+    @JsonProperty("fecha_registro_anexo")        @field:Size(max = 20) val fechaRegistroAnexo: String? = null,
+    @JsonProperty("fecha_expedicion_constancia") @field:Size(max = 20) val fechaExpedicionConstancia: String? = null,
+    @field:Size(max = 2000) val observaciones: String? = null,
     @JsonProperty("quitar_archivo") val quitarArchivo: Boolean? = null,
 )
 

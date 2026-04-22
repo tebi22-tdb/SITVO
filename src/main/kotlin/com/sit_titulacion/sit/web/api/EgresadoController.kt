@@ -33,6 +33,7 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RequestPart
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.multipart.MultipartFile
+import jakarta.validation.Valid
 import org.bson.types.ObjectId
 import org.slf4j.LoggerFactory
 import java.time.format.DateTimeFormatter
@@ -197,7 +198,7 @@ class EgresadoController(
 
     @PostMapping(consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     fun crear(
-        @RequestPart("datos") datos: EgresadoRequestDto,
+        @Valid @RequestPart("datos") datos: EgresadoRequestDto,
         @RequestPart(value = "archivo", required = false) archivo: MultipartFile? = null,
     ): ResponseEntity<EgresadoResponseDto> {
         val egresado = egresadoService.crear(datos, archivo)
@@ -292,7 +293,7 @@ class EgresadoController(
     @PostMapping("/{id}", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     fun actualizar(
         @PathVariable id: String,
-        @RequestPart("datos") datos: EgresadoRequestDto,
+        @Valid @RequestPart("datos") datos: EgresadoRequestDto,
         @RequestPart(value = "archivo", required = false) archivo: MultipartFile? = null,
     ): ResponseEntity<*> {
         return if (egresadoService.actualizar(id, datos, archivo)) {

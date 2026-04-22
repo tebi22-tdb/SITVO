@@ -267,8 +267,11 @@ class CertificacionPdfService(
             log.error("agregarPaginaCertificacion: error para {}: {}", egresado.numero_control, ex.message, ex)
             null
         } finally {
-            tmpIn.delete()
-            tmpOut.delete()
+            listOf(tmpIn, tmpOut).forEach { f ->
+                try { if (f.exists()) f.delete() } catch (e: Exception) {
+                    log.warn("No se pudo borrar archivo temporal: {}", f.absolutePath)
+                }
+            }
         }
     }
 
@@ -317,8 +320,11 @@ class CertificacionPdfService(
             log.error("firmarPdf: error al firmar: {}", ex.message, ex)
             null
         } finally {
-            tmpIn.delete()
-            tmpOut.delete()
+            listOf(tmpIn, tmpOut).forEach { f ->
+                try { if (f.exists()) f.delete() } catch (e: Exception) {
+                    log.warn("No se pudo borrar archivo temporal: {}", f.absolutePath)
+                }
+            }
         }
     }
 
