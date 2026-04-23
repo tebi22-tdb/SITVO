@@ -66,10 +66,16 @@
 
   <div class="form-seccion">
     <h3 class="form-seccion-titulo">Datos del proyecto</h3>
-    <div class="form-campo" [class.form-campo-error]="campoInvalido('nombre_proyecto')">
+    <div class="form-campo" [class.form-campo-error]="campoInvalido('nombre_proyecto') || originalidadEstado === 'BLOQUEADO'">
       <label for="nombre_proyecto">Nombre del proyecto <span class="form-obligatorio">*</span></label>
       <input id="nombre_proyecto" type="text" formControlName="nombre_proyecto" />
       <span class="form-error-msg" *ngIf="campoInvalido('nombre_proyecto')">Campo obligatorio</span>
+      <div class="originalidad-indicador" *ngIf="originalidadEstado">
+        <span *ngIf="originalidadEstado === 'comprobando'" class="orig-comprobando">Verificando originalidad...</span>
+        <span *ngIf="originalidadEstado === 'LIBRE'" class="orig-libre">✓ Título disponible</span>
+        <span *ngIf="originalidadEstado === 'ADVERTENCIA'" class="orig-advertencia">⚠ Título similar al existente: «{{ originalidadTituloSimilar }}»</span>
+        <span *ngIf="originalidadEstado === 'BLOQUEADO'" class="orig-bloqueado">✗ Título bloqueado, ya existe: «{{ originalidadTituloSimilar }}»</span>
+      </div>
     </div>
     <div class="form-campo" [class.form-campo-error]="campoInvalido('modalidad')">
       <label for="modalidad">Modalidad <span class="form-obligatorio">*</span></label>
@@ -178,7 +184,7 @@
 
   <div class="form-acciones">
     <button type="button" class="btn btn-cancelar" [disabled]="guardando" (click)="onCancelar()">Cancelar</button>
-    <button type="submit" class="btn btn-agregar" [disabled]="guardando">
+    <button type="submit" class="btn btn-agregar" [disabled]="guardando || originalidadEstado === 'BLOQUEADO' || originalidadEstado === 'comprobando'">
       {{ guardando ? 'Guardando...' : (editando ? 'Guardar cambios' : 'Agregar') }}
     </button>
   </div>

@@ -17,6 +17,7 @@ import com.sit_titulacion.sit.web.api.dto.SinodalesRespuestaDto
 import com.sit_titulacion.sit.web.api.dto.RevisionDto
 import com.sit_titulacion.sit.service.RevisionService
 import com.sit_titulacion.sit.service.DocumentoStream
+import com.sit_titulacion.sit.service.OriginalidadService
 import org.springframework.core.env.Environment
 import org.springframework.core.io.InputStreamResource
 import org.springframework.http.HttpHeaders
@@ -46,6 +47,7 @@ class EgresadoController(
     private val usuarioService: UsuarioService,
     private val emailService: EmailService,
     private val revisionService: RevisionService,
+    private val originalidadService: OriginalidadService,
     private val env: Environment,
 ) {
     private val log = LoggerFactory.getLogger(EgresadoController::class.java)
@@ -230,11 +232,39 @@ class EgresadoController(
         }
     }
 
+    /** Verifica si un título de proyecto choca con registros existentes. Requiere sesión. */
+    @GetMapping("/verificar-originalidad")
+    fun verificarOriginalidad(
+        @RequestParam titulo: String,
+        @RequestParam(required = false) excluirId: String? = null,
+        @AuthenticationPrincipal principal: UsuarioPrincipal?,
+    ): ResponseEntity<*> {
+        if (principal == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build<Void>()
+        val resultado = originalidadService.verificar(titulo, excluirId)
+        return ResponseEntity.ok(
+            mapOf(
+                "estado" to resultado.estado,
+                "titulo_similar" to (resultado.tituloSimilar ?: ""),
+            ),
+        )
+    }
+
     @PostMapping(consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     fun crear(
         @Valid @RequestPart("datos") datos: EgresadoRequestDto,
         @RequestPart(value = "archivo", required = false) archivo: MultipartFile? = null,
-    ): ResponseEntity<EgresadoResponseDto> {
+    ): ResponseEntity<*> {
+        val origResultado = originalidadService.verificar(datos.nombreProyecto ?: "")
+        if (origResultado.estado == "BLOQUEADO") {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(
+                EgresadoResponseDto(
+                    id = "",
+                    numero_control = datos.numero_control,
+                    credenciales_enviadas_correo = false,
+                    aviso_credenciales = "El título «${datos.nombreProyecto}» ya está registrado en el sistema y no puede usarse nuevamente.",
+                ),
+            )
+        }
         val egresado = egresadoService.crear(datos, archivo)
         val idStr = egresado.id?.toString() ?: ""
         val correo = datos.correo_electronico?.trim().orEmpty()
@@ -587,6 +617,31 @@ class EgresadoController(
         val creada = revisionService.crear(id, body, principal.getRol())
         return if (creada != null) ResponseEntity.status(HttpStatus.CREATED).body(creada)
         else ResponseEntity.notFound().build<Void>()
+    }
+
+    /** Egresado sube su PDF final (9.1 + 9.2 + 9.3) para concluir la titulación. */
+    @PostMapping("/mi-seguimiento/documento-final")
+    fun subirDocumentoFinal(
+        @RequestParam("archivo") archivo: MultipartFile,
+        @AuthenticationPrincipal principal: UsuarioPrincipal?,
+    ): ResponseEntity<*> {
+        if (principal == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build<Void>()
+        val numeroControl = principal.username.trim().ifBlank { null }
+            ?: return ResponseEntity.notFound().build<Void>()
+        if (archivo.isEmpty) {
+            return ResponseEntity.badRequest().body(mapOf("error" to "Selecciona un archivo PDF no vacío."))
+        }
+        return try {
+            if (egresadoService.subirDocumentoFinal(numeroControl, archivo)) {
+                ResponseEntity.ok().build<Void>()
+            } else {
+                ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                    mapOf("error" to "No se pudo registrar la titulación. Verifica que el proceso esté completo o que no hayas subido el documento previamente."),
+                )
+            }
+        } catch (e: IllegalArgumentException) {
+            ResponseEntity.badRequest().body(mapOf("error" to (e.message ?: "Archivo no válido.")))
+        }
     }
 
     /** Seguimiento del egresado: revisiones que ya fueron enviadas para corrección. */

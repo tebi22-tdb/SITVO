@@ -402,7 +402,9 @@ class EgresadoService(
             return null
         }
         return try {
-            egresadoRepository.findByObjectIdConTimeout(objectId)?.let { toDetailDto(it) }
+            egresadoRepository.findByObjectIdConTimeout(objectId)
+                ?.let { verificarYMarcarVencido(it) }
+                ?.let { toDetailDto(it) }
         } catch (e: Exception) {
             log.warn("obtenerPorId: timeout/error consultando id={}: {}", id, e.message)
             null
@@ -412,11 +414,15 @@ class EgresadoService(
     /** Obtener por número de control (respaldo cuando el id de la lista no coincide). */
     fun obtenerPorNumeroControl(numeroControl: String): EgresadoDetailDto? {
         if (numeroControl.isBlank()) return null
-        return egresadoRepository.findByNumeroControl(numeroControl.trim())?.let { toDetailDto(it) }
+        return egresadoRepository.findByNumeroControl(numeroControl.trim())
+            ?.let { verificarYMarcarVencido(it) }
+            ?.let { toDetailDto(it) }
     }
 
     fun obtenerPorEgresadoId(egresadoId: ObjectId): EgresadoDetailDto? =
-        egresadoRepository.findById(egresadoId).orElse(null)?.let { toDetailDto(it) }
+        egresadoRepository.findById(egresadoId).orElse(null)
+            ?.let { verificarYMarcarVencido(it) }
+            ?.let { toDetailDto(it) }
 
     fun obtenerPorNumeroControlParaSeguimiento(numeroControl: String): EgresadoDetailDto? =
         obtenerPorNumeroControl(numeroControl)
@@ -790,6 +796,8 @@ class EgresadoService(
             fecha_confirmacion_sinodales_recibidos = e.fechaConfirmacionSinodalesRecibidos?.let { formatter.format(it) },
             fecha_agenda_acto_9_3 = e.fechaAgendaActo93?.let { formatter.format(it) },
             fecha_creacion_anexo_9_3 = e.fechaCreacionAnexo93?.let { formatter.format(it) },
+            fecha_titulacion = e.fechaTitulacion?.let { formatter.format(it) },
+            tiene_doc_final = e.gridfsIdDocFinal != null,
         )
     }
 
@@ -1037,6 +1045,66 @@ class EgresadoService(
             ).firstOrNull { File(it).isFile }?.let { return arrayOf(it) }
         }
         return arrayOf("soffice")
+    }
+
+    fun subirDocumentoFinal(numeroControl: String, archivo: MultipartFile): Boolean {
+        val e = egresadoRepository.findByNumeroControl(numeroControl.trim()) ?: return false
+        if (e.fechaCreacionAnexo93 == null) return false
+        if (e.estado_general == "titulado") return false
+        val ahora = Instant.now()
+        val gridFsId = subirArchivo(archivo)
+        egresadoRepository.save(
+            e.copy(
+                gridfsIdDocFinal = gridFsId,
+                fechaSubidaDocFinal = ahora,
+                fechaTitulacion = ahora,
+                estado_general = "titulado",
+                fecha_actualizacion = ahora,
+                historial_estados = e.historial_estados + HistorialEstado(
+                    estado = "titulado",
+                    fecha = ahora,
+                    observacion = "Documentos finales entregados por el egresado",
+                ),
+            ),
+        )
+        log.info("Egresado numero_control={} marcado como titulado", numeroControl)
+        return true
+    }
+
+    private fun mesesPorModalidad(modalidad: String): Long? {
+        val m = modalidad.trim().lowercase()
+        return when {
+            m.contains("residencia")   -> 6L
+            m.contains("tesina")       -> 18L
+            m.contains("tesis")        -> 18L
+            m.contains("curso")        -> 12L
+            m.contains("investigaci")  -> 12L
+            m.contains("ceneval")      -> null
+            else                       -> 12L
+        }
+    }
+
+    private fun verificarYMarcarVencido(e: Egresado): Egresado {
+        if (e.estado_general == "titulado" || e.estado_general == "vencido") return e
+        val meses = mesesPorModalidad(e.datos_proyecto.modalidad) ?: return e
+        val fechaInicio = e.fechaEnviadoDepartamentoAcademico ?: e.fechaCreacion
+        val limiteLocal = fechaInicio.atZone(ZoneId.systemDefault()).toLocalDate().plusMonths(meses)
+        if (LocalDate.now(ZoneId.systemDefault()) > limiteLocal) {
+            val ahora = Instant.now()
+            val vencido = e.copy(
+                estado_general = "vencido",
+                fecha_actualizacion = ahora,
+                historial_estados = e.historial_estados + HistorialEstado(
+                    estado = "vencido",
+                    fecha = ahora,
+                    observacion = "Plazo de $meses mes(es) expirado",
+                ),
+            )
+            egresadoRepository.save(vencido)
+            log.info("Egresado id={} marcado como vencido (plazo {} meses expirado)", e.id, meses)
+            return vencido
+        }
+        return e
     }
 
     /** Igual nombre de campo en plantillas ITVO / variaciones. */

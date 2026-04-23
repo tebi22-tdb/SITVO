@@ -311,6 +311,13 @@ export class EgresadoService {
     return this.http.get(`${API}/${id}/anexo-9-3`, { responseType: 'blob' });
   }
 
+  /** Comprueba originalidad del título contra registros existentes. */
+  verificarOriginalidad(titulo: string, excluirId?: string): Observable<{ estado: string; titulo_similar: string }> {
+    let params = new HttpParams().set('titulo', titulo);
+    if (excluirId) params = params.set('excluirId', excluirId);
+    return this.http.get<{ estado: string; titulo_similar: string }>(`${API}/verificar-originalidad`, { params });
+  }
+
   actualizar(id: string, datos: EgresadoForm, archivo: File | null): Observable<unknown> {
     const formData = new FormData();
     formData.append('datos', new Blob([JSON.stringify(datos)], { type: 'application/json' }));

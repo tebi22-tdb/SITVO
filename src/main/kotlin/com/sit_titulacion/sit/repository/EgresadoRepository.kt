@@ -74,4 +74,9 @@ interface EgresadoRepository : MongoRepository<Egresado, ObjectId> {
     @Meta(maxExecutionTimeMs = 5000)
     @Query("{ 'cert_uuid' : ?0 }")
     fun findByCertUuid(certUuid: String): Egresado?
+
+    /** Repositorio público: egresados por estado_general (p. ej. "titulado"). */
+    @Meta(maxExecutionTimeMs = 5000)
+    @Query("{ 'estado_general' : ?0 }")
+    fun findByEstadoGeneral(estado: String): List<Egresado>
 }

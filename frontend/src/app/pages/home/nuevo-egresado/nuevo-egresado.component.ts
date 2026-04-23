@@ -1,8 +1,10 @@
-import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CARRERAS, NIVELES, MODALIDADES, EgresadoForm } from '../../../core/datos';
-import { EgresadoDetail } from '../../../services/egresado.service';
+import { EgresadoDetail, EgresadoService } from '../../../services/egresado.service';
+import { Subject } from 'rxjs';
+import { debounceTime, distinctUntilChanged, switchMap, of, takeUntil, catchError } from 'rxjs';
 
 export interface AgregarEgresadoPayload {
   datos: EgresadoForm;
@@ -22,7 +24,7 @@ export interface ActualizarEgresadoPayload {
   templateUrl: './nuevo-egresado.component.html',
   styleUrl: './nuevo-egresado.component.css',
 })
-export class NuevoEgresadoComponent implements OnChanges {
+export class NuevoEgresadoComponent implements OnChanges, OnInit, OnDestroy {
   @Input() egresadoParaEditar: EgresadoDetail | null = null;
   @Input() guardando = false;
   @Output() cancelar = new EventEmitter<void>();
@@ -40,7 +42,11 @@ export class NuevoEgresadoComponent implements OnChanges {
   archivoRequeridoError = false;
   form: FormGroup;
 
-  constructor(private fb: FormBuilder) {
+  originalidadEstado: 'LIBRE' | 'ADVERTENCIA' | 'BLOQUEADO' | 'comprobando' | null = null;
+  originalidadTituloSimilar: string | null = null;
+  private destroy$ = new Subject<void>();
+
+  constructor(private fb: FormBuilder, private egresadoService: EgresadoService) {
     this.form = this.fb.group({
       numero_control: ['', Validators.required],
       nombre: ['', Validators.required],
@@ -65,6 +71,38 @@ export class NuevoEgresadoComponent implements OnChanges {
     });
     this.actualizarValidadoresAsesores();
     this.form.get('modalidad')?.valueChanges.subscribe(() => this.actualizarValidadoresAsesores());
+  }
+
+  ngOnInit(): void {
+    this.form.get('nombre_proyecto')!.valueChanges.pipe(
+      debounceTime(600),
+      distinctUntilChanged(),
+      switchMap(titulo => {
+        const t = (titulo || '').trim();
+        if (t.length < 5) {
+          this.originalidadEstado = null;
+          return of(null);
+        }
+        this.originalidadEstado = 'comprobando';
+        const excluirId = this.egresadoParaEditar?.id;
+        return this.egresadoService.verificarOriginalidad(t, excluirId).pipe(
+          catchError(() => of(null)),
+        );
+      }),
+      takeUntil(this.destroy$),
+    ).subscribe(resultado => {
+      if (resultado === null) {
+        if (this.originalidadEstado === 'comprobando') this.originalidadEstado = null;
+        return;
+      }
+      this.originalidadEstado = resultado.estado as 'LIBRE' | 'ADVERTENCIA' | 'BLOQUEADO';
+      this.originalidadTituloSimilar = resultado.titulo_similar || null;
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -167,6 +205,7 @@ export class NuevoEgresadoComponent implements OnChanges {
       this.form.markAllAsTouched();
       return;
     }
+    if (this.originalidadEstado === 'BLOQUEADO') return;
     if (!this.editando && !this.archivoSeleccionado) {
       this.archivoRequeridoError = true;
       return;

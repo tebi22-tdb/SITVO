@@ -64,6 +64,11 @@ export const routes: Routes = [
     canActivate: [academicoGuard],
   },
   {
+    path: 'repositorio',
+    loadComponent: () =>
+      import('./pages/repositorio/repositorio.component').then((m) => m.RepositorioComponent),
+  },
+  {
     path: 'verificar/:uuid',
     loadComponent: () =>
       import('./pages/verificar-documento/verificar-documento.component').then((m) => m.VerificarDocumentoComponent),

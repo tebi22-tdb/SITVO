@@ -17,11 +17,15 @@ type EstadoAvance = 'en_tiempo' | 'rezagado' | 'vencido';
 
 const MARGEN_REZAGO_DIAS = 30;
 
-function diasPlazoPorModalidad(modalidad: string): number {
+function mesesPorModalidad(modalidad: string): number | null {
   const m = modalidad.trim().toLowerCase();
-  if (m === 'residencia profesional') return 183;
-  if (m === 'tesina' || m === 'ceneval') return 365;
-  return 548;
+  if (m.includes('residencia'))  return 6;
+  if (m.includes('tesina'))      return 18;
+  if (m.includes('tesis'))       return 18;
+  if (m.includes('curso'))       return 12;
+  if (m.includes('investigaci')) return 12;
+  if (m.includes('ceneval'))     return null;
+  return 12;
 }
 
 function inicioDiaLocal(d: Date): Date {
@@ -33,10 +37,8 @@ function diffDiasCalendario(fechaFin: Date, fechaInicio: Date): number {
   return Math.round(ms / 86400000);
 }
 
-function sumarDiasCalendario(base: Date, dias: number): Date {
-  const d = inicioDiaLocal(base);
-  d.setDate(d.getDate() + dias);
-  return d;
+function sumarMesesCalendario(base: Date, meses: number): Date {
+  return new Date(base.getFullYear(), base.getMonth() + meses, base.getDate());
 }
 
 @Component({
@@ -90,7 +92,7 @@ export class SeguimientoComponent implements OnInit {
     const c9 = !!d.fecha_confirmacion_sinodales_recibidos;
     const c10 = !!d.fecha_agenda_acto_9_3;
     const c11 = !!d.fecha_creacion_anexo_9_3;
-    const c12 = c11;
+    const c12 = d.estado_general === 'titulado';
 
     const raw: Omit<PasoAlumnoVista, 'activo'>[] = [
       {
@@ -176,8 +178,10 @@ export class SeguimientoComponent implements OnInit {
       {
         numero: 12,
         titulo: 'Proceso de titulación finalizado',
-        detalle: '¡Felicidades! Tu proceso en esta etapa quedó concluido en el sistema.',
-        fecha: fh(d.fecha_creacion_anexo_9_3),
+        detalle: c12
+          ? '¡Felicidades! Tus documentos fueron entregados y tu titulación quedó registrada.'
+          : 'Sube tus documentos finales (9.1, 9.2 y 9.3 en un solo PDF) para concluir.',
+        fecha: fh(c12 ? d.fecha_actualizacion : undefined),
         completado: c12,
       },
     ];
@@ -205,8 +209,9 @@ export class SeguimientoComponent implements OnInit {
     const inicio = new Date(d.fecha_creacion);
     if (isNaN(inicio.getTime())) return 'en_tiempo';
     const modalidad = d.datos_proyecto?.modalidad?.trim() ?? '';
-    const plazoDias = diasPlazoPorModalidad(modalidad);
-    const fechaLimite = sumarDiasCalendario(inicio, plazoDias);
+    const meses = mesesPorModalidad(modalidad);
+    if (meses === null) return 'en_tiempo';
+    const fechaLimite = sumarMesesCalendario(inicio, meses);
     const hoy = new Date();
     const diasRestantes = diffDiasCalendario(fechaLimite, hoy);
     if (diasRestantes < 0) return 'vencido';
@@ -226,7 +231,9 @@ export class SeguimientoComponent implements OnInit {
     const inicio = new Date(d.fecha_creacion);
     if (isNaN(inicio.getTime())) return '—';
     const modalidad = d.datos_proyecto?.modalidad?.trim() ?? '';
-    const fechaLimite = sumarDiasCalendario(inicio, diasPlazoPorModalidad(modalidad));
+    const meses = mesesPorModalidad(modalidad);
+    if (meses === null) return 'Sin plazo';
+    const fechaLimite = sumarMesesCalendario(inicio, meses);
     const dia = fechaLimite.getDate().toString().padStart(2, '0');
     const mes = (fechaLimite.getMonth() + 1).toString().padStart(2, '0');
     const anio = fechaLimite.getFullYear();
@@ -239,7 +246,9 @@ export class SeguimientoComponent implements OnInit {
     const inicio = new Date(d.fecha_creacion);
     if (isNaN(inicio.getTime())) return 'No se pudo calcular el plazo.';
     const modalidad = d.datos_proyecto?.modalidad?.trim() ?? '';
-    const fechaLimite = sumarDiasCalendario(inicio, diasPlazoPorModalidad(modalidad));
+    const meses = mesesPorModalidad(modalidad);
+    if (meses === null) return 'Esta modalidad no tiene fecha límite de proceso.';
+    const fechaLimite = sumarMesesCalendario(inicio, meses);
     const hoy = new Date();
     const diasRestantes = diffDiasCalendario(fechaLimite, hoy);
     if (diasRestantes < 0) {

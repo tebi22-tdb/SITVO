@@ -232,6 +232,38 @@
   background: #1a365d;
 }
 
+.originalidad-indicador {
+  margin-top: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.orig-comprobando {
+  color: #64748b;
+}
+
+.orig-libre {
+  color: #16a34a;
+}
+
+.orig-advertencia {
+  color: #b45309;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.orig-bloqueado {
+  color: #b91c1c;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  display: inline-block;
+}
+
 @media (max-width: 640px) {
   .form-fila {
     grid-template-columns: 1fr;

@@ -45,4 +45,9 @@ data class Egresado(
     val cert_uuid: String? = null,
     val cert_hash: String? = null,
     @Field("fecha_certificacion") val fechaCertificacion: Instant? = null,
+    /** GridFS ID del PDF final (9.1 + 9.2 + 9.3) subido por el egresado para concluir. */
+    @Field("gridfs_id_doc_final") val gridfsIdDocFinal: ObjectId? = null,
+    @Field("fecha_subida_doc_final") val fechaSubidaDocFinal: Instant? = null,
+    /** Momento en que el estado pasó a "titulado" (documentos finales aceptados). */
+    @Field("fecha_titulacion") val fechaTitulacion: Instant? = null,
 )

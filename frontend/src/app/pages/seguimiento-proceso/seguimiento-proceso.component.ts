@@ -16,11 +16,15 @@ type OrdenFiltro = 'prioridad' | 'nombre' | 'control';
 /** Días de margen antes del límite para pasar de "en tiempo" a "rezagado". */
 const MARGEN_REZAGO_DIAS = 30;
 
-function diasPlazoPorModalidad(modalidad: string): number {
+function mesesPorModalidad(modalidad: string): number | null {
   const m = modalidad.trim().toLowerCase();
-  if (m === 'residencia profesional') return 183;
-  if (m === 'tesina' || m === 'ceneval') return 365;
-  return 548;
+  if (m.includes('residencia'))  return 6;
+  if (m.includes('tesina'))      return 18;
+  if (m.includes('tesis'))       return 18;
+  if (m.includes('curso'))       return 12;
+  if (m.includes('investigaci')) return 12;
+  if (m.includes('ceneval'))     return null;
+  return 12;
 }
 
 function inicioDiaLocal(d: Date): Date {
@@ -32,10 +36,8 @@ function diffDiasCalendario(fechaFin: Date, fechaInicio: Date): number {
   return Math.round(ms / 86400000);
 }
 
-function sumarDiasCalendario(base: Date, dias: number): Date {
-  const d = inicioDiaLocal(base);
-  d.setDate(d.getDate() + dias);
-  return d;
+function sumarMesesCalendario(base: Date, meses: number): Date {
+  return new Date(base.getFullYear(), base.getMonth() + meses, base.getDate());
 }
 
 interface SeguimientoItem {
@@ -614,8 +616,23 @@ export class SeguimientoProcesoComponent implements OnInit, OnDestroy {
       };
     }
 
-    const plazoDias = diasPlazoPorModalidad(modalidad);
-    const fechaLimiteDate = sumarDiasCalendario(inicio, plazoDias);
+    const meses = mesesPorModalidad(modalidad);
+
+    if (meses === null) {
+      return {
+        id: e.id,
+        alumno: e.nombre || '—',
+        noControl: e.numero_control || '—',
+        producto,
+        carrera: e.carrera || '—',
+        estado: 'en_tiempo',
+        documentoFaltante: 'En curso',
+        ultimoMovimiento,
+        fechaLimite: 'Sin plazo',
+      };
+    }
+
+    const fechaLimiteDate = sumarMesesCalendario(inicio, meses);
     const diasRestantes = diffDiasCalendario(fechaLimiteDate, hoy);
 
     let estado: SeguimientoItem['estado'];

@@ -40,6 +40,19 @@
             </div>
           </div>
         </div>
+
+        <div *ngIf="datos.fecha_creacion_anexo_9_3" class="entrega-final-cta">
+          <ng-container *ngIf="datos.estado_general !== 'titulado'">
+            <h4 class="entrega-final-titulo">Paso final: entrega de documentos</h4>
+            <p class="entrega-final-desc">
+              Sube en un solo PDF tus documentos 9.1, 9.2 y 9.3 para concluir oficialmente tu titulación.
+            </p>
+            <!-- TODO (compañero): agregar aquí el input de archivo y el botón de subida -->
+          </ng-container>
+          <ng-container *ngIf="datos.estado_general === 'titulado'">
+            <p class="entrega-final-completada">✓ Documentos entregados. ¡Tu titulación está registrada!</p>
+          </ng-container>
+        </div>
       </div>
 
       <aside class="seguimiento-aside">
