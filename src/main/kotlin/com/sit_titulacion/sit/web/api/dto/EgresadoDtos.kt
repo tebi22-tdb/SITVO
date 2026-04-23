@@ -135,6 +135,7 @@ data class EgresadoDetailDto(
     @JsonProperty("fecha_confirmacion_sinodales_recibidos") val fecha_confirmacion_sinodales_recibidos: String? = null,
     @JsonProperty("fecha_agenda_acto_9_3") val fecha_agenda_acto_9_3: String? = null,
     @JsonProperty("fecha_creacion_anexo_9_3") val fecha_creacion_anexo_9_3: String? = null,
+    @JsonProperty("fecha_confirmacion_entrega_anexo_9_3") val fecha_confirmacion_entrega_anexo_9_3: String? = null,
     @JsonProperty("fecha_titulacion") val fecha_titulacion: String? = null,
     @JsonProperty("tiene_doc_final") val tiene_doc_final: Boolean = false,
 )

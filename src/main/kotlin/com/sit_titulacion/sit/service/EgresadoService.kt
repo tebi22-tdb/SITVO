@@ -833,6 +833,7 @@ class EgresadoService(
             fecha_confirmacion_sinodales_recibidos = e.fechaConfirmacionSinodalesRecibidos?.let { formatter.format(it) },
             fecha_agenda_acto_9_3 = e.fechaAgendaActo93?.let { formatter.format(it) },
             fecha_creacion_anexo_9_3 = e.fechaCreacionAnexo93?.let { formatter.format(it) },
+            fecha_confirmacion_entrega_anexo_9_3 = e.fechaConfirmacionEntregaAnexo93?.let { formatter.format(it) },
             fecha_titulacion = e.fechaTitulacion?.let { formatter.format(it) },
             tiene_doc_final = e.gridfsIdDocFinal != null,
         )

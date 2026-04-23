@@ -42,6 +42,8 @@ data class Egresado(
     /** Fecha y hora agendada del acto 9.3. */
     @Field("fecha_agenda_acto_9_3") val fechaAgendaActo93: Instant? = null,
     @Field("fecha_creacion_anexo_9_3") val fechaCreacionAnexo93: Instant? = null,
+    /** DEP confirma entrega del anexo 9.3 a sinodales y sustentante. */
+    @Field("fecha_confirmacion_entrega_anexo_9_3") val fechaConfirmacionEntregaAnexo93: Instant? = null,
     val cert_uuid: String? = null,
     val cert_hash: String? = null,
     @Field("fecha_certificacion") val fechaCertificacion: Instant? = null,
