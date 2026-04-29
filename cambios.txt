@@ -1,0 +1,85 @@
+================================================================================
+RESUMEN DE CAMBIOS ================================================================================
+
+
+--------------------------------------------------------------------------------
+1) BACKEND — 
+--------------------------------------------------------------------------------
+
+• src/main/kotlin/.../domain/Egresado.kt
+  Quedó con fechas nuevas para el flujo post–anexo 9.3: solicitud de documentación
+  escaneada, envío por el egresado y confirmación de recepción por la DEP.
+
+• src/main/kotlin/.../domain/DocumentacionEscaneada.kt  (archivo NUEVO, aún sin git add)
+  Define la colección Mongo "documentacion_escaneada": datos del alumno (control,
+  nombre, carrera) + lista de archivos con referencia GridFS.
+
+• src/main/kotlin/.../repository/DocumentacionEscaneadaRepository.kt  (NUEVO)
+  Repositorio para leer/guardar entregas de documentación escaneada por egresado.
+
+• src/main/kotlin/.../domain/Revision.kt
+  Ajustes al modelo de revisión (campos/comportamiento según lo que se editó en esta rama).
+
+• src/main/kotlin/.../service/EgresadoService.kt
+  Lógica de: solicitar documentación escaneada, subir PDFs del egresado (GridFS +
+  registro en documentacion_escaneada), confirmar recepción; mapeo de nuevas fechas
+  al detalle y a la lista.
+
+• src/main/kotlin/.../service/RevisionService.kt
+  Cambios en el servicio de revisiones alineados con Revision.kt.
+
+• src/main/kotlin/.../web/api/EgresadoController.kt
+  Endpoints nuevos: solicitar y confirmar documentación escaneada por id de egresado;
+  POST multipart para el egresado en mi-seguimiento/documentacion-escaneada.
+
+• src/main/kotlin/.../web/api/dto/EgresadoDtos.kt
+  DTOs de detalle y de lista con las nuevas fechas en JSON (snake_case).
+
+
+--------------------------------------------------------------------------------
+2) FRONTEND — Angular
+--------------------------------------------------------------------------------
+
+• frontend/src/app/services/egresado.service.ts
+  Tipos EgresadoItem/EgresadoDetail ampliados; métodos HTTP para el flujo de
+  documentación escaneada y multipart de archivos.
+
+• frontend/src/app/pages/seguimiento-proceso/seguimiento-proceso.component.ts
+  y .html
+  Vista DEP: pasos extra (solicitud de docs escaneados, confirmación "recibido");
+  botones Enviar / Recibido; estado "En espera del egresado"; criterio de
+  expediente finalizado incluye cierre de documentación escaneada.
+
+• frontend/src/app/pages/seguimiento/seguimiento.component.ts
+  y .html y .css
+  Vista alumno: pasos 12–14 del timeline para documentación escaneada; el formulario
+  de subida de PDF quedó DENTRO del paso 13 (solo visible cuando el paso 13 es el
+  activo); mensaje de "ya enviado" asociado al paso 14; textos del paso 13 antes/después
+  del envío.
+
+• frontend/src/app/pages/home/home.component.html y .ts
+  Ajustes de pantalla inicio (enlaces, textos o lógica según lo editado).
+
+• frontend/src/app/pages/home/nuevo-egresado/nuevo-egresado.component.html y .ts
+  Ajustes al alta de egresado.
+
+• frontend/src/app/layout/header/header.component.html
+  Cambio menor en cabecera (enlace o visibilidad de botones).
+
+• frontend/src/app/pages/departamento-academico/revision-documento/
+  revision-documento.component.css, .html, .ts
+  Mejoras de UI y comportamiento en la revisión de documento del departamento.
+
+
+--------------------------------------------------------------------------------
+3) PLANTILLAS PDF (HTML → PDF)
+--------------------------------------------------------------------------------
+
+• src/main/resources/templates/html/anexo-9-1.html
+  Maquetación y contenido del PDF 9.1 retocados.
+
+• src/main/resources/templates/html/anexo-9-3.html
+  Maquetación y contenido del PDF 9.3 retocados (menos saltos de página, textos, etc.).
+
+
+

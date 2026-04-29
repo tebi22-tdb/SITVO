@@ -46,6 +46,7 @@ export class HomeComponent implements OnInit {
   detalle: EgresadoDetail | null = null;
   cargandoDetalle = false;
   cargandoLista = false;
+  guardandoEgresado = false;
   errorLista = '';
 
   mostrarModalAgregarUsuario = false;
@@ -176,12 +177,13 @@ export class HomeComponent implements OnInit {
   }
 
   onAgregar(payload: { datos: EgresadoForm; archivo: File | null }): void {
+    if (this.guardandoEgresado) return;
     this.mensaje = '';
     this.detalle = null;
-    this.guardando = true;
+    this.guardandoEgresado = true;
     this.egresadoService.crear(payload.datos, payload.archivo).subscribe({
       next: (res: EgresadoCrearResponse) => {
-        this.guardando = false;
+        this.guardandoEgresado = false;
         this.mostrarFormulario = false;
         this.cargarLista();
         if (res.credenciales_enviadas_correo === true) {
@@ -193,7 +195,7 @@ export class HomeComponent implements OnInit {
         }
       },
       error: (err) => {
-        this.guardando = false;
+        this.guardandoEgresado = false;
         const msg = err?.error?.error ?? err?.message ?? err?.statusText;
         this.mensaje = msg
           ? `Error al guardar: ${msg}`
@@ -227,11 +229,12 @@ export class HomeComponent implements OnInit {
   }
 
   onActualizar(payload: { id: string; datos: EgresadoForm; archivo: File | null }): void {
+    if (this.guardandoEgresado) return;
     this.mensaje = '';
-    this.guardando = true;
+    this.guardandoEgresado = true;
     this.egresadoService.actualizar(payload.id, payload.datos, payload.archivo).subscribe({
       next: () => {
-        this.guardando = false;
+        this.guardandoEgresado = false;
         this.editando = false;
         this.egresadoService.obtenerPorId(payload.id).subscribe({
           next: (d) => {
@@ -242,7 +245,7 @@ export class HomeComponent implements OnInit {
         this.mensaje = 'Egresado actualizado correctamente.';
       },
       error: (err) => {
-        this.guardando = false;
+        this.guardandoEgresado = false;
         const msg = err?.error?.error ?? err?.message ?? err?.statusText;
         this.mensaje = msg
           ? `Error al actualizar: ${msg}`

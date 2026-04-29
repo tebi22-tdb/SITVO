@@ -212,6 +212,7 @@ export class NuevoEgresadoComponent implements OnChanges, OnInit, OnDestroy {
   }
 
   onSubmit(): void {
+    if (this.guardando) return;
     this.archivoRequeridoError = false;
     if (this.form.invalid) {
       this.form.markAllAsTouched();
