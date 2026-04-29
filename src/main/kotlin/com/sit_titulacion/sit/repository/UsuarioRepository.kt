@@ -13,4 +13,6 @@ interface UsuarioRepository : MongoRepository<Usuario, ObjectId> {
     fun existsByUsername(username: String): Boolean
 
     fun findByEgresadoId(egresadoId: ObjectId): Usuario?
+
+    fun findByCorreoElectronico(correoElectronico: String): Usuario?
 }

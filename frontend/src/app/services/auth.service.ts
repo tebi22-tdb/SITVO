@@ -81,6 +81,13 @@ export class AuthService {
     return this.http.get<UsuarioActual>(AUTH + '/me').pipe(tap((u) => (this.usuario = u)));
   }
 
+  recuperarPassword(numeroControl: string): Observable<{ ok: boolean; message: string }> {
+    return this.http.post<{ ok: boolean; message: string }>(
+      `${AUTH}/recuperar-password`,
+      { numeroControl: numeroControl.trim() },
+    );
+  }
+
   logout(): Observable<unknown> {
     return this.http.post(AUTH + '/logout', {}).pipe(
       tap(() => {

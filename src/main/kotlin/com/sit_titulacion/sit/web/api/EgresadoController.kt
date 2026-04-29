@@ -83,7 +83,7 @@ class EgresadoController(
             else -> null
         }
         val scopeUsername =
-            if (principal != null && puedeVerBandejaDepartamento(principal.getRol())) {
+            if (principal != null && principal.getRol()?.trim()?.lowercase()?.replace(' ', '_') == "academico") {
                 principal.username
             } else {
                 null

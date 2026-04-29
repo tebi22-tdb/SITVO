@@ -98,7 +98,7 @@
             {{ detalleSeleccionado.datos_personales.apellido_materno }} · {{ detalleSeleccionado.numero_control }}
           </p>
         </div>
-        <p *ngIf="mensajeProceso" class="seg-msg">{{ mensajeProceso }}</p>
+        <p *ngIf="mensajeProceso" class="seg-msg-proceso">{{ mensajeProceso }}</p>
         <p *ngIf="cargandoDetalle" class="seg-msg">Cargando detalle del egresado...</p>
         <p *ngIf="!cargandoDetalle && !detalleSeleccionado" class="seg-msg">Selecciona un egresado en la tabla para ver su proceso.</p>
         <div *ngIf="!cargandoDetalle && detalleSeleccionado" class="seg-proceso-lista">

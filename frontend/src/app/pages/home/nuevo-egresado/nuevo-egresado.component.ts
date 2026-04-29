@@ -1,8 +1,9 @@
 import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { CARRERAS, NIVELES, MODALIDADES, EgresadoForm } from '../../../core/datos';
+import { EgresadoForm } from '../../../core/datos';
 import { EgresadoDetail, EgresadoService } from '../../../services/egresado.service';
+import { CatalogoService } from '../../../services/catalogo.service';
 import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap, of, takeUntil, catchError } from 'rxjs';
 
@@ -31,9 +32,9 @@ export class NuevoEgresadoComponent implements OnChanges, OnInit, OnDestroy {
   @Output() agregar = new EventEmitter<AgregarEgresadoPayload>();
   @Output() actualizar = new EventEmitter<ActualizarEgresadoPayload>();
 
-  readonly carreras = CARRERAS;
-  readonly niveles = NIVELES;
-  readonly modalidades = MODALIDADES;
+  carreras: string[] = [];
+  niveles: string[] = [];
+  modalidades: string[] = [];
 
   archivoSeleccionado: File | null = null;
   /** Al editar: true si el usuario quiere quitar el archivo actual. */
@@ -46,7 +47,11 @@ export class NuevoEgresadoComponent implements OnChanges, OnInit, OnDestroy {
   originalidadTituloSimilar: string | null = null;
   private destroy$ = new Subject<void>();
 
-  constructor(private fb: FormBuilder, private egresadoService: EgresadoService) {
+  constructor(
+    private fb: FormBuilder,
+    private egresadoService: EgresadoService,
+    private catalogoService: CatalogoService,
+  ) {
     this.form = this.fb.group({
       numero_control: ['', Validators.required],
       nombre: ['', Validators.required],
@@ -74,6 +79,13 @@ export class NuevoEgresadoComponent implements OnChanges, OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.catalogoService.carreras$.pipe(takeUntil(this.destroy$))
+      .subscribe(lista => (this.carreras = lista));
+    this.catalogoService.niveles$.pipe(takeUntil(this.destroy$))
+      .subscribe(lista => (this.niveles = lista));
+    this.catalogoService.modalidades$.pipe(takeUntil(this.destroy$))
+      .subscribe(lista => (this.modalidades = lista.map(m => m.nombre)));
+
     this.form.get('nombre_proyecto')!.valueChanges.pipe(
       debounceTime(600),
       distinctUntilChanged(),
@@ -148,7 +160,7 @@ export class NuevoEgresadoComponent implements OnChanges, OnInit, OnDestroy {
   /** Según la modalidad, exige asesor interno/externo o director y asesores 1 y 2. */
   private actualizarValidadoresAsesores(): void {
     const modalidad = this.form.get('modalidad')?.value;
-    const esResidencia = modalidad === 'Residencia Profesional';
+    const esResidencia = this.catalogoService.esResidencia(modalidad ?? '');
     const required = Validators.required;
     if (esResidencia) {
       this.form.get('asesor_interno')?.setValidators(required);

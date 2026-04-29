@@ -1,10 +1,61 @@
-.verificar-container {
+.verificar-page {
   min-height: 100vh;
+  background: #f5f7fa;
+}
+
+.verificar-header {
+  background: linear-gradient(135deg, #1a365d 0%, #2c5282 100%);
+  color: #fff;
+  padding: 0.75rem 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.verificar-header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.verificar-logo-izq,
+.verificar-logo-der {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.verificar-logo {
+  height: 60px;
+  width: auto;
+  object-fit: contain;
+}
+
+.verificar-titulo-block {
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.verificar-titulo {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.verificar-subtitulo {
+  margin: 0.15rem 0 0;
+  font-size: 0.85rem;
+  font-weight: 400;
+  opacity: 0.9;
+}
+
+.verificar-main {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f5f7fa;
-  padding: 24px;
+  padding: 40px 24px;
 }
 
 .verificar-card {
@@ -14,23 +65,6 @@
   max-width: 580px;
   width: 100%;
   overflow: hidden;
-}
-
-.verificar-header {
-  background: #264f8c;
-  color: #fff;
-  padding: 24px 28px 20px;
-}
-
-.verificar-header h2 {
-  margin: 0 0 6px;
-  font-size: 1.4rem;
-}
-
-.verificar-subtitulo {
-  margin: 0;
-  font-size: 0.88rem;
-  opacity: 0.85;
 }
 
 .verificar-estado {

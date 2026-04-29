@@ -314,6 +314,16 @@ export class EgresadoService {
     return this.http.get(`${API}/${id}/anexo-9-3`, { responseType: 'blob' });
   }
 
+  confirmarEntregaAnexo93(id: string): Observable<unknown> {
+    return this.http.post(`${API}/${id}/confirmar-entrega-anexo-9-3`, {});
+  }
+
+  subirDocumentoFinal(archivo: File): Observable<unknown> {
+    const formData = new FormData();
+    formData.append('archivo', archivo);
+    return this.http.post(`${API}/mi-seguimiento/documento-final`, formData);
+  }
+
   /** Comprueba originalidad del título contra registros existentes. */
   verificarOriginalidad(titulo: string, excluirId?: string): Observable<{ estado: string; titulo_similar: string }> {
     let params = new HttpParams().set('titulo', titulo);

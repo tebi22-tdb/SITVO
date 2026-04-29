@@ -8,6 +8,7 @@ import { EgresadoForm } from '../../core/datos';
 import { EgresadoService, EgresadoItem, EgresadoDetail, EgresadoCrearResponse } from '../../services/egresado.service';
 import { AuthService, CrearUsuarioBody, UsuarioStaffItem } from '../../services/auth.service';
 import { PERFILES_CREACION_USUARIO, datosRolDesdePerfil } from '../../core/perfiles-usuario-staff';
+import { CatalogoService } from '../../services/catalogo.service';
 
 interface CrearUsuarioStaffForm extends CrearUsuarioBody {
   /** Clave del desplegable (departamento / división). */
@@ -63,6 +64,7 @@ export class HomeComponent implements OnInit {
     private egresadoService: EgresadoService,
     private authService: AuthService,
     private router: Router,
+    private catalogoService: CatalogoService,
   ) {}
 
   ngOnInit(): void {
@@ -324,7 +326,10 @@ export class HomeComponent implements OnInit {
     const d = datosRolDesdePerfil(this.usuarioForm.perfil);
     this.usuarioForm.rol = d.rol;
     this.usuarioForm.segmento_academico = d.segmento_academico;
-    this.usuarioForm.carreras_asignadas = d.carreras_asignadas;
+    // Las carreras vienen del catálogo dinámico; si el slug no existe usa el fallback de datosRolDesdePerfil.
+    this.usuarioForm.carreras_asignadas = d.segmento_academico
+      ? this.catalogoService.carrerasPorSlugSync(d.segmento_academico)
+      : d.carreras_asignadas;
   }
 
   get carrerasAsignadasTexto(): string {

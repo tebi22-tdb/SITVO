@@ -63,4 +63,42 @@ class EmailService(
             throw e
         }
     }
+
+    fun enviarRecuperacionPassword(
+        correoDestino: String,
+        usuario: String,
+        nuevaPassword: String,
+    ): Boolean {
+        if (correoDestino.isBlank() || mailSender == null || fromEmail.isBlank()) {
+            log.warn("Recuperación de contraseña: correo no enviado (configuración incompleta o destino vacío)")
+            return false
+        }
+        val mensaje = SimpleMailMessage().apply {
+            setFrom(fromEmail)
+            setTo(correoDestino.trim())
+            subject = "SITVO - Nueva contraseña"
+            text = """
+                Hola,
+
+                Se ha generado una nueva contraseña para tu cuenta en el Sistema Integral de Titulación (SITVO).
+
+                Usuario: $usuario
+                Nueva contraseña: $nuevaPassword
+
+                Por seguridad, te recomendamos contactar a la coordinación para establecer una contraseña personal.
+
+                Si no solicitaste este cambio, ignora este correo — tu cuenta sigue siendo segura.
+
+                Saludos.
+            """.trimIndent()
+        }
+        return try {
+            mailSender.send(mensaje)
+            log.info("Correo de recuperación enviado a {} (usuario {})", correoDestino, usuario)
+            true
+        } catch (e: Exception) {
+            log.error("Error al enviar correo de recuperación a {}: {}", correoDestino, e.message)
+            false
+        }
+    }
 }

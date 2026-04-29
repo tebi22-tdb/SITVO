@@ -71,10 +71,10 @@
       <input id="nombre_proyecto" type="text" formControlName="nombre_proyecto" />
       <span class="form-error-msg" *ngIf="campoInvalido('nombre_proyecto')">Campo obligatorio</span>
       <div class="originalidad-indicador" *ngIf="originalidadEstado">
-        <span *ngIf="originalidadEstado === 'comprobando'" class="orig-comprobando">Verificando originalidad...</span>
-        <span *ngIf="originalidadEstado === 'LIBRE'" class="orig-libre">✓ Título disponible</span>
-        <span *ngIf="originalidadEstado === 'ADVERTENCIA'" class="orig-advertencia">⚠ Título similar al existente: «{{ originalidadTituloSimilar }}»</span>
-        <span *ngIf="originalidadEstado === 'BLOQUEADO'" class="orig-bloqueado">✗ Título bloqueado, ya existe: «{{ originalidadTituloSimilar }}»</span>
+        <span *ngIf="originalidadEstado === 'comprobando'" class="orig-comprobando">Verificando...</span>
+        <span *ngIf="originalidadEstado === 'LIBRE'" class="orig-libre">Nombre disponible</span>
+        <span *ngIf="originalidadEstado === 'ADVERTENCIA'" class="orig-advertencia">Nombre similar al existente: {{ originalidadTituloSimilar }}</span>
+        <span *ngIf="originalidadEstado === 'BLOQUEADO'" class="orig-bloqueado">Nombre bloqueado, ya existe: {{ originalidadTituloSimilar }}</span>
       </div>
     </div>
     <div class="form-campo" [class.form-campo-error]="campoInvalido('modalidad')">

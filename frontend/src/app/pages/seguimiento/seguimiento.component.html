@@ -47,7 +47,20 @@
             <p class="entrega-final-desc">
               Sube en un solo PDF tus documentos 9.1, 9.2 y 9.3 para concluir oficialmente tu titulación.
             </p>
-            <!-- TODO (compañero): agregar aquí el input de archivo y el botón de subida -->
+            <div class="entrega-final-upload">
+              <label class="entrega-final-label" [class.deshabilitado]="subiendoDocFinal">
+                <input
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  class="entrega-final-input-hidden"
+                  [disabled]="subiendoDocFinal"
+                  (change)="subirDocumentoFinal($event)"
+                />
+                <span class="entrega-final-btn">{{ subiendoDocFinal ? 'Subiendo…' : 'Seleccionar y subir PDF' }}</span>
+              </label>
+              <p *ngIf="errorDocFinal" class="entrega-final-error">{{ errorDocFinal }}</p>
+              <p *ngIf="mensajeDocFinal" class="entrega-final-ok">{{ mensajeDocFinal }}</p>
+            </div>
           </ng-container>
           <ng-container *ngIf="datos.estado_general === 'titulado'">
             <p class="entrega-final-completada">✓ Documentos entregados. ¡Tu titulación está registrada!</p>

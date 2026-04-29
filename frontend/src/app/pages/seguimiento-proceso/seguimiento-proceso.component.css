@@ -54,6 +54,7 @@
 
 .seg-msg { background: #eef3fb; border-radius: 8px; padding: 8px 10px; color: #32517d; }
 .seg-err { background: #ffe9e9; color: #8b2e2e; }
+.seg-msg-proceso { margin: 0 0 6px; padding: 3px 8px; font-size: 0.75rem; color: #32517d; background: #eef3fb; border-left: 3px solid #5b8fd4; border-radius: 4px; }
 
 .seg-tabla-wrap { background: #fff; border: 1px solid #d9e0ef; border-radius: 8px; overflow: auto; height: calc(100vh - 250px); }
 .seg-tabla { width: 100%; border-collapse: collapse; min-width: 860px; }

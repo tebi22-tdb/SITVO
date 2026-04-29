@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HeaderComponent } from '../../layout/header/header.component';
 import { EgresadoService, EgresadoDetail, RevisionApi } from '../../services/egresado.service';
+import { CatalogoService } from '../../services/catalogo.service';
 
 /** Paso mostrado al alumno (solo lectura). */
 export interface PasoAlumnoVista {
@@ -16,17 +17,6 @@ export interface PasoAlumnoVista {
 type EstadoAvance = 'en_tiempo' | 'rezagado' | 'vencido';
 
 const MARGEN_REZAGO_DIAS = 30;
-
-function mesesPorModalidad(modalidad: string): number | null {
-  const m = modalidad.trim().toLowerCase();
-  if (m.includes('residencia'))  return 6;
-  if (m.includes('tesina'))      return 18;
-  if (m.includes('tesis'))       return 18;
-  if (m.includes('curso'))       return 12;
-  if (m.includes('investigaci')) return 12;
-  if (m.includes('ceneval'))     return null;
-  return 12;
-}
 
 function inicioDiaLocal(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -54,6 +44,9 @@ export class SeguimientoComponent implements OnInit {
   error = '';
   cargandoRevisionesEnviadas = false;
   revisionesEnviadas: RevisionApi[] = [];
+  subiendoDocFinal = false;
+  errorDocFinal = '';
+  mensajeDocFinal = '';
 
   get revisionesParaCorregir(): RevisionApi[] {
     return this.revisionesEnviadas.filter((r) => r.resultado === 'observaciones');
@@ -61,7 +54,7 @@ export class SeguimientoComponent implements OnInit {
 
   get esResidenciaProfesional(): boolean {
     const m = this.datos?.datos_proyecto?.modalidad?.trim() ?? '';
-    return m.toLowerCase() === 'residencia profesional';
+    return this.catalogoService.esResidencia(m);
   }
 
   /**
@@ -209,7 +202,7 @@ export class SeguimientoComponent implements OnInit {
     const inicio = new Date(d.fecha_creacion);
     if (isNaN(inicio.getTime())) return 'en_tiempo';
     const modalidad = d.datos_proyecto?.modalidad?.trim() ?? '';
-    const meses = mesesPorModalidad(modalidad);
+    const meses = this.catalogoService.mesesVigencia(modalidad);
     if (meses === null) return 'en_tiempo';
     const fechaLimite = sumarMesesCalendario(inicio, meses);
     const hoy = new Date();
@@ -231,7 +224,7 @@ export class SeguimientoComponent implements OnInit {
     const inicio = new Date(d.fecha_creacion);
     if (isNaN(inicio.getTime())) return '—';
     const modalidad = d.datos_proyecto?.modalidad?.trim() ?? '';
-    const meses = mesesPorModalidad(modalidad);
+    const meses = this.catalogoService.mesesVigencia(modalidad);
     if (meses === null) return 'Sin plazo';
     const fechaLimite = sumarMesesCalendario(inicio, meses);
     const dia = fechaLimite.getDate().toString().padStart(2, '0');
@@ -246,7 +239,7 @@ export class SeguimientoComponent implements OnInit {
     const inicio = new Date(d.fecha_creacion);
     if (isNaN(inicio.getTime())) return 'No se pudo calcular el plazo.';
     const modalidad = d.datos_proyecto?.modalidad?.trim() ?? '';
-    const meses = mesesPorModalidad(modalidad);
+    const meses = this.catalogoService.mesesVigencia(modalidad);
     if (meses === null) return 'Esta modalidad no tiene fecha límite de proceso.';
     const fechaLimite = sumarMesesCalendario(inicio, meses);
     const hoy = new Date();
@@ -271,7 +264,34 @@ export class SeguimientoComponent implements OnInit {
     return (partes[0][0] + partes[1][0]).toUpperCase();
   }
 
-  constructor(private egresadoService: EgresadoService) {}
+  subirDocumentoFinal(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const archivo = input.files?.[0];
+    if (!archivo) return;
+    if (!archivo.type.includes('pdf')) {
+      this.errorDocFinal = 'Solo se aceptan archivos PDF.';
+      return;
+    }
+    this.subiendoDocFinal = true;
+    this.errorDocFinal = '';
+    this.mensajeDocFinal = '';
+    this.egresadoService.subirDocumentoFinal(archivo).subscribe({
+      next: () => {
+        this.subiendoDocFinal = false;
+        this.mensajeDocFinal = '¡Documentos entregados! Tu titulación quedó registrada.';
+        this.cargarSeguimiento();
+      },
+      error: (err: { error?: { error?: string } }) => {
+        this.subiendoDocFinal = false;
+        this.errorDocFinal = err?.error?.error ?? 'No se pudo subir el documento. Intenta de nuevo.';
+      },
+    });
+  }
+
+  constructor(
+    private egresadoService: EgresadoService,
+    private catalogoService: CatalogoService,
+  ) {}
 
   ngOnInit(): void {
     this.cargarSeguimiento();

@@ -49,9 +49,14 @@ class SecurityConfig(
             .authorizeHttpRequests { auth ->
                 auth
                     .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/auth/recuperar-password").permitAll()
                     .requestMatchers("/api/auth/hash").permitAll()
                     .requestMatchers("/api/verificar/**").permitAll()
                     .requestMatchers("/api/repositorio/**").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/catalogos/carreras").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/catalogos/niveles").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/catalogos/modalidades").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/catalogos/departamentos").permitAll()
                     .requestMatchers("/dev/**").permitAll()
                     .requestMatchers("/api/auth/me").authenticated()
                     .requestMatchers("/api/auth/logout").authenticated()

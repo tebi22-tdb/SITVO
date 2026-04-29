@@ -2,7 +2,7 @@ import { Component, EventEmitter, Input, Output, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
-import { obtenerSegmentoAcademicoDef, SEGMENTOS_ACADEMICOS } from '../../core/segmentos-academicos';
+import { CatalogoService } from '../../services/catalogo.service';
 
 @Component({
   selector: 'app-header',
@@ -25,7 +25,8 @@ export class HeaderComponent implements OnInit {
 
   constructor(
     private auth: AuthService,
-    private router: Router
+    private router: Router,
+    private catalogoService: CatalogoService,
   ) {}
 
   ngOnInit(): void {
@@ -33,12 +34,11 @@ export class HeaderComponent implements OnInit {
     const username = u?.username ?? '';
     const rol = (u?.rol ?? '').toLowerCase();
     const nombre = this.obtenerNombreMostrable(u?.nombre, username);
-    const segmento = obtenerSegmentoAcademicoDef(u?.segmento_academico ?? '');
 
     if (rol === 'academico') {
       const area =
-        segmento?.nombre ??
-        this.inferirAreaAcademicaPorCarreras(u?.carreras_asignadas) ??
+        this.catalogoService.nombreDepartamentoPorSlug(u?.segmento_academico ?? '') ??
+        this.catalogoService.inferirNombreDepartamentoPorCarreras(u?.carreras_asignadas ?? []) ??
         'Coordinacion de apoyo a la titulacion';
       this.nombreUsuario = `${nombre} - ${area}`;
     } else if (username === 'coordinador' || rol === 'coordinador') {
@@ -60,18 +60,6 @@ export class HeaderComponent implements OnInit {
     const base = username.split('@')[0]?.split('+')[0]?.trim();
     if (!base) return 'Usuario';
     return base;
-  }
-
-  private inferirAreaAcademicaPorCarreras(carreras?: string[]): string | null {
-    const normalizadas = (carreras ?? []).map((c) => c.trim().toLowerCase()).filter(Boolean);
-    if (!normalizadas.length) return null;
-    for (const seg of SEGMENTOS_ACADEMICOS) {
-      const set = new Set(seg.carreras.map((c) => c.trim().toLowerCase()));
-      if (normalizadas.every((c) => set.has(c))) {
-        return seg.nombre;
-      }
-    }
-    return null;
   }
 
   logout(): void {

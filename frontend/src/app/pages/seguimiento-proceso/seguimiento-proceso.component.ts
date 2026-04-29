@@ -9,23 +9,13 @@ import { catchError, EMPTY, finalize, of, throwError, timeout } from 'rxjs';
 import { HeaderComponent } from '../../layout/header/header.component';
 import { mensajeErrorApiConBlob } from '../../core/http-blob-error';
 import { EgresadoService, EgresadoDetail, EgresadoItem } from '../../services/egresado.service';
+import { CatalogoService } from '../../services/catalogo.service';
 
 type EstadoFiltro = 'todos' | 'en_tiempo' | 'rezagado' | 'vencido';
 type OrdenFiltro = 'prioridad' | 'nombre' | 'control';
 
 /** Días de margen antes del límite para pasar de "en tiempo" a "rezagado". */
 const MARGEN_REZAGO_DIAS = 30;
-
-function mesesPorModalidad(modalidad: string): number | null {
-  const m = modalidad.trim().toLowerCase();
-  if (m.includes('residencia'))  return 6;
-  if (m.includes('tesina'))      return 18;
-  if (m.includes('tesis'))       return 18;
-  if (m.includes('curso'))       return 12;
-  if (m.includes('investigaci')) return 12;
-  if (m.includes('ceneval'))     return null;
-  return 12;
-}
 
 function inicioDiaLocal(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -153,6 +143,7 @@ export class SeguimientoProcesoComponent implements OnInit, OnDestroy {
   constructor(
     private egresadoService: EgresadoService,
     private router: Router,
+    private catalogoService: CatalogoService,
   ) {}
 
   ngOnInit(): void {
@@ -193,7 +184,8 @@ export class SeguimientoProcesoComponent implements OnInit, OnDestroy {
 
   /** Misma modalidad que en formulario / backend (Residencia Profesional usa Liberar; el resto revisión académica). */
   get esResidenciaProfesionalSeguimiento(): boolean {
-    return (this.detalleSeleccionado?.datos_proyecto?.modalidad ?? '').trim() === 'Residencia Profesional';
+    const m = (this.detalleSeleccionado?.datos_proyecto?.modalidad ?? '').trim();
+    return this.catalogoService.esResidencia(m);
   }
 
   seleccionarEgresado(item: SeguimientoItem): void {
@@ -683,7 +675,7 @@ export class SeguimientoProcesoComponent implements OnInit, OnDestroy {
         this.mensajeProceso = 'Entrega del anexo 9.3 confirmada.';
         this.refrescarDetalle();
       },
-      error: (err) => {
+      error: (err: { error?: { error?: string } }) => {
         this.procesandoPaso = false;
         this.mensajeProceso = err?.error?.error ?? 'No se pudo confirmar la entrega del 9.3.';
       },
@@ -713,7 +705,7 @@ export class SeguimientoProcesoComponent implements OnInit, OnDestroy {
     const isoUltimo = e.fecha_actualizacion;
     const ultimoMovimiento = isoUltimo ? this.formatoFecha(new Date(isoUltimo)) : '—';
 
-    const esRes = modalidad.trim().toLowerCase() === 'residencia profesional';
+    const esRes = this.catalogoService.esResidencia(modalidad.trim());
     const tituloListo =
       esRes && e.fecha_creacion_anexo_9_3 && e.fecha_confirmacion_entrega_anexo_9_3;
     const tituloListoOtras = !esRes && e.fecha_creacion_anexo_9_3;
@@ -747,7 +739,7 @@ export class SeguimientoProcesoComponent implements OnInit, OnDestroy {
       };
     }
 
-    const meses = mesesPorModalidad(modalidad);
+    const meses = this.catalogoService.mesesVigencia(modalidad);
 
     if (meses === null) {
       return {

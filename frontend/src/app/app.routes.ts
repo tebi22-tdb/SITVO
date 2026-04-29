@@ -26,6 +26,12 @@ export const routes: Routes = [
     canActivate: [coordinadorGuard],
   },
   {
+    path: 'home/catalogos',
+    loadComponent: () =>
+      import('./pages/catalogos/catalogos.component').then((m) => m.CatalogosComponent),
+    canActivate: [coordinadorGuard],
+  },
+  {
     path: 'home/seguimiento-proceso',
     loadComponent: () =>
       import('./pages/seguimiento-proceso/seguimiento-proceso.component').then((m) => m.SeguimientoProcesoComponent),
