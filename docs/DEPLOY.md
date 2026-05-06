@@ -119,7 +119,42 @@ sudo yum install -y java-21-openjdk
 
 ---
 
-## Paso 2.3 — Crear el servicio del backend
+## Paso 2.3 — Crear el archivo de variables de entorno
+
+Ejecuta:
+
+```bash
+sudo nano /opt/sit/.env
+```
+
+Pega esto y rellena los valores reales:
+
+```bash
+# Secreto JWT — pon una cadena larga y aleatoria (mínimo 32 caracteres)
+SIT_JWT_SECRET=cambia-esto-por-un-secreto-largo-y-seguro
+
+# Contraseña de aplicación de Gmail (16 caracteres sin espacios)
+SIT_MAIL_PASSWORD=contraseña-de-aplicacion-gmail
+
+# Contraseña del keystore PKI (elige una, se usa al generarlo por primera vez)
+SIT_KEYSTORE_PASSWORD=cambia-esta-contraseña-keystore
+
+# URL pública del sistema — usada en el código QR de los documentos certificados
+# Si tienes dominio, pon: http://tudominio.com   Si no, deja la IP:
+SIT_BASE_URL=http://77.37.74.122
+```
+
+Guarda y sal: **Ctrl+O**, Enter, **Ctrl+X**.
+
+Protege el archivo para que solo root lo lea:
+
+```bash
+chmod 600 /opt/sit/.env
+```
+
+---
+
+## Paso 2.3b — Crear el servicio del backend
 
 Ejecuta:
 
@@ -138,7 +173,8 @@ After=network.target mongod.service
 Type=simple
 User=root
 WorkingDirectory=/opt/sit
-ExecStart=/usr/bin/java -jar /opt/sit/sit-0.0.1-SNAPSHOT.jar
+EnvironmentFile=/opt/sit/.env
+ExecStart=/usr/bin/java -jar /opt/sit/sit-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
 Restart=on-failure
 RestartSec=10
 
@@ -147,6 +183,9 @@ WantedBy=multi-user.target
 ```
 
 Guarda y sal: **Ctrl+O**, Enter, luego **Ctrl+X**.
+
+> **Nota:** `--spring.profiles.active=prod` activa el `application-prod.properties` que
+> configura las rutas Linux de LibreOffice, el keystore PKI y la plantilla del Anexo 9.2.
 
 ---
 
