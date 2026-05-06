@@ -27,10 +27,6 @@ class UsuarioService(
      * Crea un usuario egresado: genera contraseña, la hashea, guarda en usuarios.
      * @return Pair(username, passwordPlana) para enviar por correo
      */
-    /** True si ya hay un usuario (cualquier rol) con ese nombre de inicio de sesión. */
-    fun existeUsuarioConUsername(username: String): Boolean =
-        usuarioRepository.existsByUsername(username.trim())
-
     fun crearUsuarioEgresado(numeroControl: String, egresadoId: ObjectId): Pair<String, String> {
         if (usuarioRepository.existsByUsername(numeroControl)) {
             throw IllegalArgumentException("Ya existe un usuario con número de control: $numeroControl")

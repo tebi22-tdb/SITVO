@@ -6,9 +6,7 @@ function isSitApiRequest(url: string): boolean {
   if (environment.apiUrl) {
     return url.startsWith(environment.apiUrl);
   }
-  if (url.startsWith('/api')) return true;
-  if (typeof window !== 'undefined' && url.startsWith(`${window.location.origin}/api`)) return true;
-  return false;
+  return url.startsWith('/api');
 }
 
 /** Añade Bearer por pestaña (sessionStorage); sin cookie compartida entre pestañas. */

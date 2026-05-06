@@ -52,15 +52,6 @@ bootrun-log.txt
 
 ### Archivos locales ###
 .env
-.env.*
-!.env.example
 _prisciliano_*.txt
 _esteban_pdf.txt
 _doc_extract_text.txt
-
-### Respaldos / basura de entorno (no compartir) ###
-*.zip
-compile-out.txt
-Thumbs.db
-.DS_Store
-*.local

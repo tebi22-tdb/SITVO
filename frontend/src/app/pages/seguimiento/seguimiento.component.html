@@ -8,7 +8,7 @@
     <div *ngIf="cargando" class="seguimiento-cargando">Cargando seguimiento…</div>
     <div *ngIf="error" class="seguimiento-error">{{ error }}</div>
 
-    <div *ngIf="!cargando && !error && datos" class="seguimiento-layout" [class.seguimiento-layout--vencido]="procesoBloqueadoPorVencimientoPlazoAlumno">
+    <div *ngIf="!cargando && !error && datos" class="seguimiento-layout">
       <div class="seguimiento-timeline-card">
         <div class="proceso-titulo-wrap">
           <h3 class="proceso-titulo">Tu proceso</h3>
@@ -16,13 +16,22 @@
         </div>
 
         <p class="seguimiento-modalidad-line" *ngIf="datos.datos_proyecto.modalidad">
-          <span class="seguimiento-modalidad-etiqueta">Por opción de:</span>
+          <span class="seguimiento-modalidad-etiqueta">Modalidad</span>
           <strong class="seguimiento-modalidad-valor">{{ datos.datos_proyecto.modalidad }}</strong>
         </p>
         <p class="seguimiento-estado-actual">{{ estadoActualAlumno }}</p>
-        <p *ngIf="procesoBloqueadoPorVencimientoPlazoAlumno" class="seguimiento-vencido-aviso" role="alert">
-          El plazo de desarrollo de tu proyecto venció. Tu proceso queda detenido en el sistema y no podrás enviar más avances hasta regularizar tu situación con división de estudios profesionales.
-        </p>
+
+        <div
+          *ngIf="avisoPlazosNoResAlumno as plazos"
+          class="seguimiento-plazos-banner"
+          [class.seguimiento-plazos--ok]="plazos.estadoGlobal === 'en_tiempo'"
+          [class.seguimiento-plazos--mid]="plazos.estadoGlobal === 'rezagado'"
+          [class.seguimiento-plazos--bad]="plazos.estadoGlobal === 'vencido'"
+        >
+          <p class="seguimiento-plazos-titulo">Tus plazos (proyecto y titulación)</p>
+          <p class="seguimiento-plazos-line">{{ plazos.lineaProyecto }}</p>
+          <p class="seguimiento-plazos-line">{{ plazos.lineaTitulacion }}</p>
+        </div>
 
         <div class="timeline">
           <div
@@ -38,31 +47,13 @@
                 <span class="timeline-titulo-paso">
                   <strong>{{ paso.numero }}. {{ paso.titulo }}</strong>
                 </span>
-                <p class="timeline-detalle-alumno" *ngIf="paso.detalle || paso.fechaDetalleResaltada">
+                <p class="timeline-detalle-alumno">
                   {{ paso.detalle }}
                   <strong *ngIf="paso.fechaDetalleResaltada" class="timeline-fecha-destacada">{{
                     paso.fechaDetalleResaltada
                   }}</strong>
                 </p>
-                <div *ngIf="paso.plazoRecepcion as plazo" class="plazo-desarrollo-rec" [ngClass]="plazo.claseSemafono">
-                  <div class="plazo-desarrollo-rec__cab">
-                    <span class="plazo-desarrollo-rec__semaforo" aria-hidden="true"></span>
-                    <strong class="plazo-desarrollo-rec__estado">{{ plazo.etiquetaEstado }}</strong>
-                    <span class="plazo-desarrollo-rec__vigencia">Vigencia del proyecto: {{ plazo.mesesTotales }} mes(es) calendario</span>
-                  </div>
-                  <div class="plazo-desarrollo-rec__fechas-row" role="group" [attr.aria-label]="'Fechas del plazo de desarrollo: ' + plazo.etiquetaEstado">
-                    <div class="plazo-desarrollo-rec__fecha-cuadro" [ngClass]="plazo.claseSemafono">
-                      <span class="plazo-desarrollo-rec__fecha-cuadro-etiq">{{ plazo.etiquetaLineaInicio }}</span>
-                      <strong class="plazo-desarrollo-rec__fecha-cuadro-valor">{{ plazo.fechaInicioTexto }}</strong>
-                    </div>
-                    <div class="plazo-desarrollo-rec__fecha-cuadro" [ngClass]="plazo.claseSemafono">
-                      <span class="plazo-desarrollo-rec__fecha-cuadro-etiq">Fecha límite del periodo</span>
-                      <strong class="plazo-desarrollo-rec__fecha-cuadro-valor">{{ plazo.fechaLimiteTexto }}</strong>
-                    </div>
-                  </div>
-                  <div class="plazo-desarrollo-rec__tiempo-falta">{{ plazo.textoTiempoRestanteCorto }}</div>
-                </div>
-                <div *ngIf="paso.clave === 'revisiones_apoyo'" class="timeline-revisiones-resumen">
+                <div *ngIf="!esResidenciaProfesional && paso.numero === 3" class="timeline-revisiones-resumen">
                   <span
                     class="timeline-revisiones-badge"
                     [class.timeline-revisiones-badge--ok]="etapaRevisionesCompletada || !tieneRevisionesPendientes"
@@ -75,41 +66,69 @@
                   </button>
                 </div>
 
-                <div *ngIf="(paso.clave === 'doc_escaneada_subir' || paso.clave === 'doc_escaneada_unificada') && mostrarFormularioSubidaDocEscaneada" class="timeline-doc-escaneada">
-                  <h4 class="timeline-doc-escaneada-titulo">Subir documentación</h4>
+                <div *ngIf="paso.titulo === 'Documentación escaneada enviada' && mostrarFormularioSubidaDocEscaneada" class="timeline-doc-escaneada">
+                  <h4 class="timeline-doc-escaneada-titulo">Documentación escaneada del proceso</h4>
                   <p class="timeline-doc-escaneada-texto">
-                    Sube al SITVO un solo archivo .PDF con toda la documentación escaneada (no fotos).
-                  </p>
-                  <p
-                    *ngIf="datos.observaciones_reenvio_documentacion_escaneada && !datos.fecha_envio_documentacion_escaneada_egresado"
-                    class="timeline-doc-escaneada-msg"
-                  >
-                    Observaciones de la DEP: {{ datos.observaciones_reenvio_documentacion_escaneada }}
+                    Sube en PDF la documentación escaneada de todo tu proceso correspondiente a la titulación integral. Puedes adjuntar
+                    varios archivos.
                   </p>
                   <input
                     type="file"
                     accept="application/pdf,.pdf"
+                    multiple
                     class="timeline-doc-escaneada-input"
-                    [disabled]="procesoBloqueadoPorVencimientoPlazoAlumno"
                     (change)="onArchivosDocEscaneadaSeleccionados($event)"
                   />
                   <p *ngIf="archivosPdfEscaneados.length" class="timeline-doc-escaneada-lista">
-                    Archivo PDF seleccionado.
+                    {{ archivosPdfEscaneados.length }} archivo(s) seleccionado(s).
                   </p>
                   <p *ngIf="mensajeDocEscaneada" class="timeline-doc-escaneada-msg">{{ mensajeDocEscaneada }}</p>
                   <button
                     type="button"
                     class="timeline-doc-escaneada-btn"
-                    [disabled]="enviandoDocEscaneada || !archivosPdfEscaneados.length || procesoBloqueadoPorVencimientoPlazoAlumno"
+                    [disabled]="enviandoDocEscaneada || !archivosPdfEscaneados.length"
                     (click)="enviarDocumentacionEscaneadaAlumno()"
                   >
                     {{ enviandoDocEscaneada ? 'Enviando…' : 'Enviar' }}
                   </button>
                 </div>
 
+                <div *ngIf="paso.titulo === 'Recepción de documentación confirmada' && mostrarEstadoDocEscaneadaEnviada" class="timeline-doc-escaneada timeline-doc-escaneada--info">
+                  <p class="timeline-doc-escaneada-texto timeline-doc-escaneada-texto--solo">
+                    Enviaste tu documentación el
+                    <strong>{{ formatearFechaHora(datos.fecha_envio_documentacion_escaneada_egresado) }}</strong>. La división de
+                    estudios confirmará la recepción en cuanto revise tus archivos.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
+        </div>
+
+        <div *ngIf="datos.fecha_creacion_anexo_9_3" class="entrega-final-cta">
+          <ng-container *ngIf="datos.estado_general !== 'titulado'">
+            <h4 class="entrega-final-titulo">Paso final: entrega de documentos</h4>
+            <p class="entrega-final-desc">
+              Sube en un solo PDF tus documentos 9.1, 9.2 y 9.3 para concluir oficialmente tu titulación.
+            </p>
+            <div class="entrega-final-upload">
+              <label class="entrega-final-label" [class.deshabilitado]="subiendoDocFinal">
+                <input
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  class="entrega-final-input-hidden"
+                  [disabled]="subiendoDocFinal"
+                  (change)="subirDocumentoFinal($event)"
+                />
+                <span class="entrega-final-btn">{{ subiendoDocFinal ? 'Subiendo…' : 'Seleccionar y subir PDF' }}</span>
+              </label>
+              <p *ngIf="errorDocFinal" class="entrega-final-error">{{ errorDocFinal }}</p>
+              <p *ngIf="mensajeDocFinal" class="entrega-final-ok">{{ mensajeDocFinal }}</p>
+            </div>
+          </ng-container>
+          <ng-container *ngIf="datos.estado_general === 'titulado'">
+            <p class="entrega-final-completada">✓ Documentos entregados. ¡Tu titulación está registrada!</p>
+          </ng-container>
         </div>
       </div>
 

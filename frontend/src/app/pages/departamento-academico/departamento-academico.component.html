@@ -1,12 +1,12 @@
 <div class="departamento-page">
   <app-header
     [showNuevoButton]="false"
-    [showVolverInicioButton]="false"
+    [showVolverInicioButton]="true"
     (volverInicioClick)="volverInicio()"
   ></app-header>
   <main
     class="departamento-main"
-    [class.departamento-main--ancho]="tabActivo === 'sinodales' || mostrarTabsRevisionCoordinacion"
+    [class.departamento-main--ancho]="tabActivo === 'sinodales' || esModoRevision"
     [class.departamento-main--split]="usarSplitConDocumento"
   >
     <header class="departamento-header">
@@ -24,7 +24,7 @@
         <span class="departamento-tab-badge">{{ counts.pendientes }}</span>
       </button>
       <button
-        *ngIf="mostrarTabsRevisionCoordinacion"
+        *ngIf="esModoRevision"
         type="button"
         class="departamento-tab departamento-tab--observaciones"
         [class.activo]="tabActivo === 'en_correccion'"
@@ -34,7 +34,7 @@
         <span class="departamento-tab-badge">{{ counts.en_correccion }}</span>
       </button>
       <button
-        *ngIf="mostrarTabsRevisionCoordinacion"
+        *ngIf="esModoRevision"
         type="button"
         class="departamento-tab departamento-tab--aprobados"
         [class.activo]="tabActivo === 'aprobados'"
@@ -44,7 +44,7 @@
         <span class="departamento-tab-badge">{{ counts.aprobados }}</span>
       </button>
       <button
-        *ngIf="!mostrarTabsRevisionCoordinacion"
+        *ngIf="!esModoRevision"
         type="button"
         class="departamento-tab departamento-tab--sinodales"
         [class.activo]="tabActivo === 'sinodales'"
@@ -71,7 +71,7 @@
       </div>
     </div>
 
-    <div *ngIf="(tabActivo === 'todos' || tabActivo === 'sinodales') && !cargando && !error" class="departamento-buscar-wrap">
+    <div *ngIf="tabActivo === 'todos' && !cargando && !error" class="departamento-buscar-wrap">
       <div class="departamento-buscar">
         <input
           type="text"

@@ -18,6 +18,7 @@ class RevisionService(
     private val revisionRepository: RevisionRepository,
     private val egresadoRepository: EgresadoRepository,
     private val certService: CertificacionPdfService,
+    private val catalogoService: CatalogoService,
 ) {
     private val log = LoggerFactory.getLogger(RevisionService::class.java)
     private val formatter = DateTimeFormatter.ISO_INSTANT
@@ -54,12 +55,11 @@ class RevisionService(
         if (guardada.resultado == "aprobado") {
             val eg = egresadoRepository.findById(oid).orElse(null)
             if (eg != null) {
-                val esResidencia =
-                    eg.datos_proyecto.modalidad.trim().equals("Residencia Profesional", ignoreCase = true)
-                val flujoNoResExtendido = !esResidencia && eg.fechaEnvioSolicitudRegistroAnteproyectoDeptoAcademico != null
-                val yaLiberado =
-                    eg.fechaRecibidoRegistroLiberacion != null || eg.fechaLiberacionDocumentoCoordinacionCat != null
-                if (!esResidencia && eg.fechaEnviadoDepartamentoAcademico != null && !yaLiberado) {
+                val esResidencia = catalogoService.esResidenciaPorNombre(eg.datos_proyecto.modalidad)
+                if (!esResidencia &&
+                    eg.fechaEnviadoDepartamentoAcademico != null &&
+                    eg.fechaRecibidoRegistroLiberacion == null
+                ) {
                     val ahora = Instant.now()
 
                     // Intentar certificar el documento antes de marcar como aprobado
@@ -81,30 +81,16 @@ class RevisionService(
                         log.error("Error al certificar documento para egresado id={}: {}", egresadoId, ex.message, ex)
                     }
 
-                    if (flujoNoResExtendido) {
-                        egresadoRepository.save(
-                            eg.copy(
-                                fechaLiberacionDocumentoCoordinacionCat = ahora,
-                                fechaConfirmacionRecibidosAnexoXxxiXxxii = ahora,
-                                fecha_actualizacion = ahora,
-                                documento_adjunto = docAdjunto,
-                                cert_uuid = certUuid,
-                                cert_hash = certHash,
-                                fechaCertificacion = fechaCert,
-                            ),
-                        )
-                    } else {
-                        egresadoRepository.save(
-                            eg.copy(
-                                fechaRecibidoRegistroLiberacion = ahora,
-                                fecha_actualizacion = ahora,
-                                documento_adjunto = docAdjunto,
-                                cert_uuid = certUuid,
-                                cert_hash = certHash,
-                                fechaCertificacion = fechaCert,
-                            ),
-                        )
-                    }
+                    egresadoRepository.save(
+                        eg.copy(
+                            fechaRecibidoRegistroLiberacion = ahora,
+                            fecha_actualizacion = ahora,
+                            documento_adjunto = docAdjunto,
+                            cert_uuid = certUuid,
+                            cert_hash = certHash,
+                            fechaCertificacion = fechaCert,
+                        ),
+                    )
                 }
             }
         }

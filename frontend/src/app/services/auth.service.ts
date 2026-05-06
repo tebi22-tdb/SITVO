@@ -107,27 +107,19 @@ export class AuthService {
   }
 
   isCoordinador(): boolean {
-    const raw = this.usuario?.rol?.toLowerCase().trim() ?? '';
-    if (!raw) return false;
-    const partes = raw.split(/\s*[-–—]\s*|,/g).map((p) => p.trim()).filter(Boolean);
-    const candidatos = partes.length ? partes : [raw.replace(/\s+/g, ' ')];
-    return candidatos.some(
-      (r) =>
-        r === 'coordinador' ||
-        r === 'apoyo_titulacion' ||
-        r === 'apoyo titulacion' ||
-        r === 'division_estudios_prof_admin' ||
-        r === 'administrador',
+    const r = this.usuario?.rol?.toLowerCase();
+    return (
+      r === 'coordinador' ||
+      r === 'apoyo_titulacion' ||
+      r === 'apoyo titulacion' ||
+      r === 'division_estudios_prof_admin'
     );
   }
 
   /** Listar/crear usuarios staff: coordinador o división administrativa (no apoyo a titulación). */
   puedeAdministrarUsuariosStaff(): boolean {
-    const raw = this.usuario?.rol?.toLowerCase().trim() ?? '';
-    if (!raw) return false;
-    const partes = raw.split(/\s*[-–—]\s*|,/g).map((p) => p.trim()).filter(Boolean);
-    const candidatos = partes.length ? partes : [raw];
-    return candidatos.some((r) => r === 'coordinador' || r === 'division_estudios_prof_admin');
+    const r = this.usuario?.rol?.toLowerCase();
+    return r === 'coordinador' || r === 'division_estudios_prof_admin';
   }
 
   isEgresado(): boolean {

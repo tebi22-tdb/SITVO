@@ -25,13 +25,6 @@ export const MODALIDADES = [
   'Proyecto de Investigación',
 ] as const;
 
-/** Opciones de modalidad cuando el egresado marca "Curso de titulación" (se guardan igual en `modalidad`). */
-export const MODALIDADES_CURSO_TITULACION = [
-  'Monografía',
-  'Proyecto de Investigación',
-  'Tesina',
-] as const;
-
 export interface EgresadoForm {
   numero_control: string;
   nombre: string;

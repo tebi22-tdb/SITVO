@@ -1,15 +1,10 @@
 <form [formGroup]="form" (ngSubmit)="onSubmit()" class="form-nuevo-egresado">
   <div class="form-seccion">
     <h3 class="form-seccion-titulo">Datos generales</h3>
-    <div class="form-campo" [class.form-campo-error]="campoInvalido('numero_control') || controlAltaEstado === 'BLOQUEADO'">
+    <div class="form-campo" [class.form-campo-error]="campoInvalido('numero_control')">
       <label for="numero_control">Número de control <span class="form-obligatorio">*</span></label>
       <input id="numero_control" type="text" formControlName="numero_control" placeholder="Ej. 20201234" />
       <span class="form-error-msg" *ngIf="campoInvalido('numero_control')">Campo obligatorio</span>
-      <div class="originalidad-indicador" *ngIf="controlAltaEstado">
-        <span *ngIf="controlAltaEstado === 'comprobando'" class="orig-comprobando">Verificando número de control...</span>
-        <span *ngIf="controlAltaEstado === 'LIBRE'" class="orig-libre">Número de control disponible</span>
-        <span *ngIf="controlAltaEstado === 'BLOQUEADO'" class="orig-bloqueado">{{ mensajeBloqueoNumeroControl }}</span>
-      </div>
     </div>
   </div>
 
@@ -79,22 +74,22 @@
         <span *ngIf="originalidadEstado === 'comprobando'" class="orig-comprobando">Verificando...</span>
         <span *ngIf="originalidadEstado === 'LIBRE'" class="orig-libre">Nombre disponible</span>
         <span *ngIf="originalidadEstado === 'ADVERTENCIA'" class="orig-advertencia">Nombre similar al existente: {{ originalidadTituloSimilar }}</span>
-        <span *ngIf="originalidadEstado === 'BLOQUEADO'" class="orig-bloqueado">{{ mensajeBloqueoNombreProyecto }}</span>
+        <span *ngIf="originalidadEstado === 'BLOQUEADO'" class="orig-bloqueado">Nombre bloqueado, ya existe: {{ originalidadTituloSimilar }}</span>
       </div>
+    </div>
+    <div class="form-campo" [class.form-campo-error]="campoInvalido('modalidad')">
+      <label for="modalidad">Modalidad <span class="form-obligatorio">*</span></label>
+      <select id="modalidad" formControlName="modalidad">
+        <option value="">Seleccione modalidad</option>
+        <option *ngFor="let m of modalidades" [value]="m">{{ m }}</option>
+      </select>
+      <span class="form-error-msg" *ngIf="campoInvalido('modalidad')">Campo obligatorio</span>
     </div>
     <div class="form-campo form-campo-checkbox">
       <label class="form-label-checkbox">
         <input type="checkbox" formControlName="curso_titulacion" />
         <span>Curso de titulación</span>
       </label>
-    </div>
-    <div class="form-campo" [class.form-campo-error]="campoInvalido('modalidad')">
-      <label for="modalidad">Modalidad <span class="form-obligatorio">*</span></label>
-      <select id="modalidad" formControlName="modalidad">
-        <option value="">Seleccione modalidad</option>
-        <option *ngFor="let m of opcionesModalidad" [value]="m">{{ m }}</option>
-      </select>
-      <span class="form-error-msg" *ngIf="campoInvalido('modalidad')">Campo obligatorio</span>
     </div>
     <ng-container *ngIf="form.get('modalidad')?.value === 'Residencia Profesional'">
       <div class="form-fila form-fila-2">
@@ -189,17 +184,7 @@
 
   <div class="form-acciones">
     <button type="button" class="btn btn-cancelar" [disabled]="guardando" (click)="onCancelar()">Cancelar</button>
-    <button
-      type="submit"
-      class="btn btn-agregar"
-      [disabled]="
-        guardando ||
-        originalidadEstado === 'BLOQUEADO' ||
-        originalidadEstado === 'comprobando' ||
-        controlAltaEstado === 'BLOQUEADO' ||
-        controlAltaEstado === 'comprobando'
-      "
-    >
+    <button type="submit" class="btn btn-agregar" [disabled]="guardando || originalidadEstado === 'BLOQUEADO' || originalidadEstado === 'comprobando'">
       {{ guardando ? (editando ? 'Guardando cambios...' : 'Agregando...') : (editando ? 'Guardar cambios' : 'Agregar') }}
     </button>
   </div>

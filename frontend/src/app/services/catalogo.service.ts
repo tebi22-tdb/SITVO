@@ -60,8 +60,8 @@ const CARRERAS_FALLBACK: string[] = [
 const NIVELES_FALLBACK: string[] = ['Licenciatura', 'Maestría', 'Posgrado'];
 
 const MODALIDADES_FALLBACK: ModalidadCatalogo[] = [
-  { nombre: 'Tesis',                    mesesVigencia: 12, esResidencia: false },
-  { nombre: 'Tesina',                   mesesVigencia: 12, esResidencia: false },
+  { nombre: 'Tesis',                    mesesVigencia: 18, esResidencia: false },
+  { nombre: 'Tesina',                   mesesVigencia: 18, esResidencia: false },
   { nombre: 'Residencia Profesional',   mesesVigencia: 6,  esResidencia: true  },
   { nombre: 'CENEVAL',                  mesesVigencia: null, esResidencia: false },
   { nombre: 'Proyecto de Investigación', mesesVigencia: 12, esResidencia: false },
@@ -157,9 +157,8 @@ export class CatalogoService {
     // Fallback idéntico al backend
     const lower = nombreModalidad.trim().toLowerCase();
     if (lower.includes('residencia')) return 6;
-    if (lower.includes('monograf'))   return 18;
-    if (lower.includes('tesina'))     return 12;
-    if (lower.includes('tesis'))      return 12;
+    if (lower.includes('tesina'))     return 18;
+    if (lower.includes('tesis'))      return 18;
     if (lower.includes('curso'))      return 12;
     if (lower.includes('investigaci')) return 12;
     if (lower.includes('ceneval'))    return null;

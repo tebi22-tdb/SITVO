@@ -7,8 +7,21 @@ import { NuevoEgresadoComponent } from './nuevo-egresado/nuevo-egresado.componen
 import { EgresadoForm } from '../../core/datos';
 import { EgresadoService, EgresadoItem, EgresadoDetail, EgresadoCrearResponse } from '../../services/egresado.service';
 import { AuthService, CrearUsuarioBody, UsuarioStaffItem } from '../../services/auth.service';
-import { PERFILES_CREACION_USUARIO, datosRolDesdePerfil } from '../../core/perfiles-usuario-staff';
-import { CatalogoService } from '../../services/catalogo.service';
+import { CatalogoService, DepartamentoCatalogo } from '../../services/catalogo.service';
+
+interface PerfilUI {
+  id: string;
+  etiqueta: string;
+  rol: string;
+  slug: string;
+}
+
+const PERFILES_ESTATICOS: PerfilUI[] = [
+  { id: 'apoyo_titulacion',          etiqueta: 'División de Estudios Profesionales — Apoyo a Titulación', rol: 'apoyo_titulacion',          slug: '' },
+  { id: 'division_estudios_prof_admin', etiqueta: 'División de Estudios Profesionales — Administrativo',  rol: 'division_estudios_prof_admin', slug: '' },
+  { id: 'academico_general',         etiqueta: 'Coordinacion de apoyo a la titulacion',                  rol: 'academico',                 slug: '' },
+  { id: 'servicios_escolares',       etiqueta: 'Departamento de Servicios Escolares',                    rol: 'servicios_escolares',       slug: '' },
+];
 
 interface CrearUsuarioStaffForm extends CrearUsuarioBody {
   /** Clave del desplegable (departamento / división). */
@@ -51,8 +64,18 @@ export class HomeComponent implements OnInit {
 
   mostrarModalAgregarUsuario = false;
   mostrarFormularioUsuario = false;
-  readonly perfilesCreacionUsuario = PERFILES_CREACION_USUARIO;
+  private departamentosCache: DepartamentoCatalogo[] = [];
   usuarioForm: CrearUsuarioStaffForm = this.crearUsuarioFormInicial();
+
+  get perfilesCreacionUsuario(): PerfilUI[] {
+    const deptPerfiles: PerfilUI[] = this.departamentosCache.map(d => ({
+      id: `academico_${d.slug ?? d.nombre.toLowerCase().replace(/\s+/g, '_')}`,
+      etiqueta: d.nombre,
+      rol: 'academico',
+      slug: d.slug ?? '',
+    }));
+    return [...PERFILES_ESTATICOS, ...deptPerfiles];
+  }
   guardandoUsuario = false;
   mensajeUsuario = '';
 
@@ -73,6 +96,9 @@ export class HomeComponent implements OnInit {
       this.tabLista = 'egresados';
     }
     this.cargarLista();
+    this.catalogoService.departamentos$.subscribe(depts => {
+      this.departamentosCache = depts;
+    });
   }
 
   cargarLista(): void {
@@ -196,8 +222,7 @@ export class HomeComponent implements OnInit {
       },
       error: (err) => {
         this.guardandoEgresado = false;
-        const body = err?.error as { error?: string; aviso_credenciales?: string } | undefined;
-        const msg = body?.error ?? body?.aviso_credenciales ?? err?.message ?? err?.statusText;
+        const msg = err?.error?.error ?? err?.message ?? err?.statusText;
         this.mensaje = msg
           ? `Error al guardar: ${msg}`
           : 'Error al guardar. Revisa que el backend esté en marcha y MongoDB conectada.';
@@ -327,13 +352,13 @@ export class HomeComponent implements OnInit {
   }
 
   onCambioPerfilUsuario(): void {
-    const d = datosRolDesdePerfil(this.usuarioForm.perfil);
-    this.usuarioForm.rol = d.rol;
-    this.usuarioForm.segmento_academico = d.segmento_academico;
-    // Las carreras vienen del catálogo dinámico; si el slug no existe usa el fallback de datosRolDesdePerfil.
-    this.usuarioForm.carreras_asignadas = d.segmento_academico
-      ? this.catalogoService.carrerasPorSlugSync(d.segmento_academico)
-      : d.carreras_asignadas;
+    const perfil = this.perfilesCreacionUsuario.find(p => p.id === this.usuarioForm.perfil);
+    if (!perfil) return;
+    this.usuarioForm.rol = perfil.rol;
+    this.usuarioForm.segmento_academico = perfil.slug;
+    this.usuarioForm.carreras_asignadas = perfil.slug
+      ? (this.departamentosCache.find(d => d.slug === perfil.slug)?.carreras ?? [])
+      : [];
   }
 
   get carrerasAsignadasTexto(): string {
@@ -342,15 +367,14 @@ export class HomeComponent implements OnInit {
   }
 
   private crearUsuarioFormInicial(): CrearUsuarioStaffForm {
-    const d = datosRolDesdePerfil('division_estudios_prof_admin');
     return {
       nombre: '',
       perfil: 'division_estudios_prof_admin',
-      rol: d.rol,
+      rol: 'division_estudios_prof_admin',
       correo_electronico: '',
       curp: '',
-      segmento_academico: d.segmento_academico,
-      carreras_asignadas: d.carreras_asignadas,
+      segmento_academico: '',
+      carreras_asignadas: [],
     };
   }
 

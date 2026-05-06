@@ -90,25 +90,25 @@
         </table>
       </div>
 
-      <aside class="seg-proceso" [class.seg-proceso--vencido-bloqueado]="procesoBloqueadoPorVencimientoPlazo">
+      <aside class="seg-proceso">
         <div class="seg-proceso-cabecera">
-          <div class="seg-proceso-titulo-row">
-            <h3 class="seg-proceso-titulo-seccion">Proceso de titulación</h3>
-            <span
-              *ngIf="etiquetaPlazoTitulacionCabecera"
-              class="badge seg-proceso-badge-plazo"
-              [ngClass]="claseBadgeEtiquetaPlazoTitulacion"
-              >{{ etiquetaPlazoTitulacionCabecera }}</span
-            >
-          </div>
+          <h3 class="seg-proceso-titulo-seccion">Proceso de titulación</h3>
           <p class="seg-proceso-subcabecera" *ngIf="detalleSeleccionado">
             {{ detalleSeleccionado.datos_personales.nombre }} {{ detalleSeleccionado.datos_personales.apellido_paterno }}
             {{ detalleSeleccionado.datos_personales.apellido_materno }} · {{ detalleSeleccionado.numero_control }}
           </p>
+          <div
+            *ngIf="avisoPlazosNoResDetalle as plazos"
+            class="seg-plazos-banner"
+            [class.seg-plazos-banner--ok]="plazos.estadoGlobal === 'en_tiempo'"
+            [class.seg-plazos-banner--mid]="plazos.estadoGlobal === 'rezagado'"
+            [class.seg-plazos-banner--bad]="plazos.estadoGlobal === 'vencido'"
+          >
+            <p class="seg-plazos-line"><strong>Plazos (no residencia)</strong></p>
+            <p class="seg-plazos-line">{{ plazos.lineaProyecto }}</p>
+            <p class="seg-plazos-line">{{ plazos.lineaTitulacion }}</p>
+          </div>
         </div>
-        <p *ngIf="procesoBloqueadoPorVencimientoPlazo" class="seg-proceso-vencido-aviso" role="alert">
-          El plazo de desarrollo del proyecto venció. El proceso queda detenido: no puedes registrar más avances hasta que el egresado regularice su situación con división de estudios profesionales.
-        </p>
         <p *ngIf="mensajeProceso" class="seg-msg-proceso">{{ mensajeProceso }}</p>
         <p *ngIf="cargandoDetalle" class="seg-msg">Cargando detalle del egresado...</p>
         <p *ngIf="!cargandoDetalle && !detalleSeleccionado" class="seg-msg">Selecciona un egresado en la tabla para ver su proceso.</p>
@@ -116,13 +116,12 @@
           <div
             class="seg-proceso-item"
             *ngFor="let paso of pasosProcesoTitulacionCache; trackBy: trackByPasoNumero"
-            [attr.id]="'seg-paso-' + paso.key"
             [class.seg-proceso-item-curso]="paso.estado === 'en_curso'"
             [class.seg-proceso-item-ok]="paso.estado === 'completado'"
             [attr.aria-current]="paso.estado === 'en_curso' ? 'step' : null"
           >
             <div class="seg-proceso-top">
-              <span class="seg-proceso-num" aria-hidden="true">{{ paso.numero }}.</span>
+              <span class="seg-proceso-num" aria-hidden="true">{{ paso.numero }}</span>
               <span class="seg-proceso-titulo-paso">{{ paso.titulo }}</span>
               <span
                 class="seg-proceso-chip"
@@ -136,134 +135,34 @@
             <div class="seg-proceso-fecha" *ngIf="paso.fecha">
               <span class="seg-proceso-fecha-etiq">Registro</span> {{ formatearFechaHora(paso.fecha) }}
             </div>
-            <div *ngIf="paso.plazoDesarrolloRecepcion as plazo" class="plazo-desarrollo-rec" [ngClass]="plazo.claseSemafono">
-              <div class="plazo-desarrollo-rec__cab">
-                <span class="plazo-desarrollo-rec__semaforo" aria-hidden="true"></span>
-                <strong class="plazo-desarrollo-rec__estado">{{ plazo.etiquetaEstado }}</strong>
-                <span class="plazo-desarrollo-rec__vigencia">Vigencia del proyecto: {{ plazo.mesesTotales }} mes(es) calendario</span>
-              </div>
-              <div class="plazo-desarrollo-rec__fechas-row" role="group" [attr.aria-label]="'Fechas del plazo: ' + plazo.etiquetaEstado">
-                <div class="plazo-desarrollo-rec__fecha-cuadro" [ngClass]="plazo.claseSemafono">
-                  <span class="plazo-desarrollo-rec__fecha-cuadro-etiq">{{ plazo.etiquetaLineaInicio }}</span>
-                  <strong class="plazo-desarrollo-rec__fecha-cuadro-valor">{{ plazo.fechaInicioTexto }}</strong>
-                </div>
-                <div class="plazo-desarrollo-rec__fecha-cuadro" [ngClass]="plazo.claseSemafono">
-                  <span class="plazo-desarrollo-rec__fecha-cuadro-etiq">Fecha límite del periodo</span>
-                  <strong class="plazo-desarrollo-rec__fecha-cuadro-valor">{{ plazo.fechaLimiteTexto }}</strong>
-                </div>
-              </div>
-              <div class="plazo-desarrollo-rec__tiempo-falta">{{ plazo.textoTiempoRestanteCorto }}</div>
-            </div>
             <div class="seg-proceso-acciones" *ngIf="detalleSeleccionado">
-              <button
-                *ngIf="
-                  paso.key === 'fecha_envio_solicitud_registro_anteproyecto_depto_academico' &&
-                  !detalleSeleccionado.fecha_envio_solicitud_registro_anteproyecto_depto_academico
-                "
-                type="button"
-                class="seg-btn"
-                [disabled]="procesandoPaso || procesoBloqueadoPorVencimientoPlazo"
-                (click)="solicitarRegistroAnteproyectoNoResidencia()"
-              >
-                Enviar
-              </button>
-              <button
-                *ngIf="
-                  paso.key === 'fecha_recepcion_trabajo_division_estudios_prof' &&
-                  detalleSeleccionado.fecha_envio_solicitud_registro_anteproyecto_depto_academico &&
-                  !detalleSeleccionado.fecha_recepcion_trabajo_division_estudios_prof
-                "
-                type="button"
-                class="seg-btn"
-                [disabled]="procesandoPaso || procesoBloqueadoPorVencimientoPlazo"
-                (click)="confirmarRecepcionTrabajoNoResidencia()"
-              >
-                Confirmar recepción
-              </button>
-              <button
-                *ngIf="
-                  paso.key === 'fecha_solicitud_registro_liberacion_depto_academico' &&
-                  detalleSeleccionado.fecha_recepcion_trabajo_division_estudios_prof &&
-                  !detalleSeleccionado.fecha_solicitud_registro_liberacion_depto_academico
-                "
-                type="button"
-                class="seg-btn"
-                [disabled]="procesandoPaso || procesoBloqueadoPorVencimientoPlazo"
-                (click)="solicitarRegistroLiberacionNoResidencia()"
-              >
-                Solicitar
-              </button>
-              <button
-                *ngIf="
-                  paso.key === 'fecha_recepcion_registro_liberacion_depto_academico' &&
-                  detalleSeleccionado.fecha_solicitud_registro_liberacion_depto_academico &&
-                  !detalleSeleccionado.fecha_recepcion_registro_liberacion_depto_academico
-                "
-                type="button"
-                class="seg-btn"
-                [disabled]="procesandoPaso || procesoBloqueadoPorVencimientoPlazo"
-                (click)="confirmarRecepcionRegistroLiberacionNoResidencia()"
-              >
-                Confirmar recibidos
-              </button>
-              <button
-                *ngIf="
-                  paso.key === 'fecha_enviado_departamento_academico' &&
-                  !detalleSeleccionado.fecha_enviado_departamento_academico &&
-                  (esResidenciaProfesionalSeguimiento ||
-                    noResidenciaFlujoLegacy ||
-                    !!detalleSeleccionado.fecha_recepcion_registro_liberacion_depto_academico)
-                "
-                type="button"
-                class="seg-btn"
-                [disabled]="procesandoPaso || procesoBloqueadoPorVencimientoPlazo"
-                (click)="enviarDepartamento()"
-              >
-                {{ esResidenciaProfesionalSeguimiento ? 'Enviar' : 'Enviar a revisión' }}
-              </button>
-              <button
-                *ngIf="
-                  paso.key === 'fecha_confirmacion_recibidos_anexo_xxxi_xxxii' &&
-                  (esResidenciaProfesionalSeguimiento || noResidenciaFlujoLegacy) &&
-                  detalleSeleccionado.fecha_recibido_registro_liberacion &&
-                  !detalleSeleccionado.fecha_confirmacion_recibidos_anexo_xxxi_xxxii
-                "
-                type="button"
-                class="seg-btn"
-                [disabled]="procesandoPaso || procesoBloqueadoPorVencimientoPlazo"
-                (click)="confirmarRecibidosAnexos()"
-              >
-                Confirmar
-              </button>
-              <button *ngIf="paso.key === 'fecha_creacion_anexo_9_1' && detalleSeleccionado.fecha_confirmacion_recibidos_anexo_xxxi_xxxii && !detalleSeleccionado.fecha_creacion_anexo_9_1" type="button" class="seg-btn" [disabled]="procesandoPaso || procesoBloqueadoPorVencimientoPlazo" (click)="crearDescargar91()">Crear 9.1</button>
-              <button *ngIf="paso.key === 'fecha_confirmacion_entrega_anexo_9_1' && detalleSeleccionado.fecha_creacion_anexo_9_1 && !detalleSeleccionado.fecha_confirmacion_entrega_anexo_9_1" type="button" class="seg-btn" [disabled]="procesandoPaso || procesoBloqueadoPorVencimientoPlazo" (click)="confirmarEntrega91()">Confirmar entrega</button>
-              <button *ngIf="paso.key === 'fecha_solicitud_anexo_9_2' && detalleSeleccionado.fecha_confirmacion_entrega_anexo_9_1 && !detalleSeleccionado.fecha_solicitud_anexo_9_2" type="button" class="seg-btn" [disabled]="procesandoPaso || procesoBloqueadoPorVencimientoPlazo" (click)="solicitarConstancia92AlEgresado()">Solicitar</button>
-              <button *ngIf="paso.key === 'fecha_confirmacion_recibido_anexo_9_2' && detalleSeleccionado.fecha_solicitud_anexo_9_2 && !detalleSeleccionado.fecha_confirmacion_recibido_anexo_9_2" type="button" class="seg-btn" [disabled]="procesandoPaso || procesoBloqueadoPorVencimientoPlazo" (click)="confirmarRecibido92()">Confirmar</button>
-              <button *ngIf="paso.key === 'fecha_solicitud_sinodales' && detalleSeleccionado.fecha_confirmacion_recibido_anexo_9_2 && !detalleSeleccionado.fecha_solicitud_sinodales" type="button" class="seg-btn" [disabled]="procesandoPaso || procesoBloqueadoPorVencimientoPlazo" (click)="solicitarSinodales()">Solicitar</button>
-              <button *ngIf="paso.key === 'fecha_confirmacion_sinodales_recibidos' && detalleSeleccionado.fecha_asignacion_sinodales && !detalleSeleccionado.fecha_confirmacion_sinodales_recibidos" type="button" class="seg-btn" [disabled]="procesandoPaso || procesoBloqueadoPorVencimientoPlazo" (click)="confirmarSinodalesRecibidos()">Confirmar</button>
-              <div *ngIf="paso.key === 'fecha_agenda_acto_9_3' && detalleSeleccionado.fecha_confirmacion_sinodales_recibidos" class="seg-agenda-wrap">
+              <button *ngIf="paso.key === 'fecha_enviado_departamento_academico' && !detalleSeleccionado.fecha_enviado_departamento_academico" type="button" class="seg-btn" [disabled]="procesandoPaso" (click)="enviarDepartamento()">{{ esResidenciaProfesionalSeguimiento ? 'Enviar' : 'Enviar a revisión' }}</button>
+              <button *ngIf="paso.key === 'fecha_confirmacion_recibidos_anexo_xxxi_xxxii' && detalleSeleccionado.fecha_recibido_registro_liberacion && !detalleSeleccionado.fecha_confirmacion_recibidos_anexo_xxxi_xxxii" type="button" class="seg-btn" [disabled]="procesandoPaso" (click)="confirmarRecibidosAnexos()">Confirmar</button>
+              <button *ngIf="paso.key === 'fecha_creacion_anexo_9_1' && detalleSeleccionado.fecha_confirmacion_recibidos_anexo_xxxi_xxxii && !detalleSeleccionado.fecha_creacion_anexo_9_1" type="button" class="seg-btn" [disabled]="procesandoPaso" (click)="crearDescargar91()">Crear 9.1</button>
+              <button *ngIf="paso.key === 'fecha_confirmacion_entrega_anexo_9_1' && detalleSeleccionado.fecha_creacion_anexo_9_1 && !detalleSeleccionado.fecha_confirmacion_entrega_anexo_9_1" type="button" class="seg-btn" [disabled]="procesandoPaso" (click)="confirmarEntrega91()">Confirmar entrega</button>
+              <button *ngIf="paso.key === 'fecha_solicitud_anexo_9_2' && detalleSeleccionado.fecha_confirmacion_entrega_anexo_9_1 && !detalleSeleccionado.fecha_solicitud_anexo_9_2" type="button" class="seg-btn" [disabled]="procesandoPaso" (click)="solicitarConstancia92AlEgresado()">Solicitar</button>
+              <button *ngIf="paso.key === 'fecha_confirmacion_recibido_anexo_9_2' && detalleSeleccionado.fecha_solicitud_anexo_9_2 && !detalleSeleccionado.fecha_confirmacion_recibido_anexo_9_2" type="button" class="seg-btn" [disabled]="procesandoPaso" (click)="confirmarRecibido92()">Confirmar</button>
+              <button *ngIf="paso.key === 'fecha_solicitud_sinodales' && detalleSeleccionado.fecha_confirmacion_recibido_anexo_9_2 && !detalleSeleccionado.fecha_solicitud_sinodales" type="button" class="seg-btn" [disabled]="procesandoPaso" (click)="solicitarSinodales()">Solicitar</button>
+              <button *ngIf="paso.key === 'fecha_confirmacion_sinodales_recibidos' && detalleSeleccionado.fecha_asignacion_sinodales && !detalleSeleccionado.fecha_confirmacion_sinodales_recibidos" type="button" class="seg-btn" [disabled]="procesandoPaso" (click)="confirmarSinodalesRecibidos()">Confirmar</button>
+              <div *ngIf="paso.key === 'fecha_agenda_acto_9_3' && detalleSeleccionado.fecha_confirmacion_sinodales_recibidos && !detalleSeleccionado.fecha_agenda_acto_9_3" class="seg-agenda-wrap">
                 <input
                   #fechaActo93Input
                   type="text"
                   class="seg-input-dt"
                   name="fechaActo93"
-                  placeholder="📅 Clic para elegir fecha y hora"
+                  placeholder="Clic para elegir fecha y hora"
                   [(ngModel)]="fechaActo93"
                   readonly
                   (click)="abrirCalendarioActo93()"
                 />
-                <button type="button" class="seg-btn" [disabled]="procesandoPaso || procesoBloqueadoPorVencimientoPlazo" (click)="agendarActo93()">
-                  {{ detalleSeleccionado.fecha_agenda_acto_9_3 ? 'Reagendar' : 'Agendar' }}
-                </button>
+                <button type="button" class="seg-btn" [disabled]="procesandoPaso" (click)="agendarActo93(fechaActo93)">Agendar</button>
               </div>
-              <button *ngIf="paso.key === 'fecha_creacion_anexo_9_3' && detalleSeleccionado.fecha_agenda_acto_9_3" type="button" class="seg-btn" [disabled]="procesandoPaso || procesoBloqueadoPorVencimientoPlazo" (click)="crearDescargar93()">
-                {{ detalleSeleccionado.fecha_creacion_anexo_9_3 ? 'Regenerar 9.3' : 'Crear 9.3' }}
-              </button>
+              <button *ngIf="paso.key === 'fecha_creacion_anexo_9_3' && detalleSeleccionado.fecha_agenda_acto_9_3 && !detalleSeleccionado.fecha_creacion_anexo_9_3" type="button" class="seg-btn" [disabled]="procesandoPaso" (click)="crearDescargar93()">Crear 9.3</button>
               <button
                 *ngIf="paso.key === 'fecha_confirmacion_entrega_anexo_9_3' && esResidenciaProfesionalSeguimiento && detalleSeleccionado.fecha_creacion_anexo_9_3 && !detalleSeleccionado.fecha_confirmacion_entrega_anexo_9_3"
                 type="button"
                 class="seg-btn"
-                [disabled]="procesandoPaso || procesoBloqueadoPorVencimientoPlazo"
+                [disabled]="procesandoPaso"
                 (click)="confirmarEntrega93()"
               >
                 Confirmar
@@ -277,57 +176,24 @@
                 "
                 type="button"
                 class="seg-btn"
-                [disabled]="procesandoPaso || procesoBloqueadoPorVencimientoPlazo"
+                [disabled]="procesandoPaso"
                 (click)="solicitarDocumentacionEscaneada()"
               >
                 Enviar
               </button>
-              <div
-                *ngIf="paso.key === 'fecha_confirmacion_documentacion_escaneada_recibida' && detalleSeleccionado.fecha_envio_documentacion_escaneada_egresado"
-                class="seg-doc-escaneada-wrap"
+              <button
+                *ngIf="
+                  paso.key === 'fecha_confirmacion_documentacion_escaneada_recibida' &&
+                  detalleSeleccionado.fecha_envio_documentacion_escaneada_egresado &&
+                  !detalleSeleccionado.fecha_confirmacion_documentacion_escaneada_recibida
+                "
+                type="button"
+                class="seg-btn"
+                [disabled]="procesandoPaso"
+                (click)="confirmarDocumentacionEscaneadaRecibida()"
               >
-                <p *ngIf="cargandoDocEscaneada" class="seg-msg">Cargando PDF enviado...</p>
-                <p *ngIf="!cargandoDocEscaneada && errorCargaDocEscaneada" class="seg-msg seg-msg-error">
-                  {{ errorCargaDocEscaneada }}
-                </p>
-                <iframe
-                  *ngIf="!cargandoDocEscaneada && !errorCargaDocEscaneada && vistaDocEscaneadaUrl"
-                  class="seg-doc-escaneada-viewer"
-                  [src]="vistaDocEscaneadaUrl"
-                  title="Documento escaneado enviado por el egresado"
-                ></iframe>
-                <p *ngIf="!cargandoDocEscaneada && !errorCargaDocEscaneada && !vistaDocEscaneadaUrl" class="seg-msg">
-                  No se pudo cargar la vista previa del PDF.
-                </p>
-
-                <div *ngIf="!detalleSeleccionado.fecha_confirmacion_documentacion_escaneada_recibida" class="seg-doc-escaneada-reenvio">
-                  <textarea
-                    class="seg-doc-escaneada-obs"
-                    [(ngModel)]="observacionesReenvioDocEscaneada"
-                    name="observacionesReenvioDocEscaneada"
-                    rows="3"
-                    placeholder="Observaciones para solicitar corrección..."
-                  ></textarea>
-                  <div class="seg-doc-escaneada-actions">
-                    <button
-                      type="button"
-                      class="seg-btn"
-                      [disabled]="procesandoPaso || procesoBloqueadoPorVencimientoPlazo"
-                      (click)="confirmarDocumentacionEscaneadaRecibida()"
-                    >
-                      Recibido
-                    </button>
-                    <button
-                      type="button"
-                      class="seg-btn seg-btn-sec"
-                      [disabled]="procesandoPaso || procesoBloqueadoPorVencimientoPlazo"
-                      (click)="solicitarDocumentacionEscaneadaNuevamente()"
-                    >
-                      Solicitar de nuevo
-                    </button>
-                  </div>
-                </div>
-              </div>
+                Recibido
+              </button>
             </div>
           </div>
         </div>

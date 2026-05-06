@@ -1,6 +1,5 @@
 package com.sit_titulacion.sit.service
 
-import com.sit_titulacion.sit.domain.Egresado
 import com.sit_titulacion.sit.repository.EgresadoRepository
 import org.springframework.stereotype.Service
 import java.text.Normalizer
@@ -9,8 +8,6 @@ data class OriginalidadResultado(
     /** "LIBRE", "ADVERTENCIA" o "BLOQUEADO" */
     val estado: String,
     val tituloSimilar: String? = null,
-    /** Solo si [estado] es BLOQUEADO: vencido, titulado o en_proceso (mensajes en alta). */
-    val expedienteEstado: String? = null,
 )
 
 @Service
@@ -43,7 +40,7 @@ class OriginalidadService(private val egresadoRepository: EgresadoRepository) {
             if (palabrasExistente.isEmpty()) continue
 
             if (palabrasNuevas == palabrasExistente) {
-                return OriginalidadResultado("BLOQUEADO", tituloExistente, expedienteEstadoUi(e))
+                return OriginalidadResultado("BLOQUEADO", tituloExistente)
             }
 
             val interseccion = palabrasNuevas.intersect(palabrasExistente).size
@@ -53,12 +50,6 @@ class OriginalidadService(private val egresadoRepository: EgresadoRepository) {
             }
         }
         return OriginalidadResultado("LIBRE")
-    }
-
-    private fun expedienteEstadoUi(e: Egresado): String = when (e.estado_general) {
-        "vencido" -> "vencido"
-        "titulado" -> "titulado"
-        else -> "en_proceso"
     }
 
     private fun normalizarPalabras(titulo: String): Set<String> {

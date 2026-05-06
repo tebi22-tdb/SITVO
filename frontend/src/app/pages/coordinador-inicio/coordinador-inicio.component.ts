@@ -14,18 +14,6 @@ import { AuthService } from '../../services/auth.service';
       <div class="contenido">
         <h1 class="titulo">Bienvenido</h1>
         <div class="cards">
-          <button type="button" class="card" (click)="irDepartamentoAcademicoMenu()">
-            <div class="card-texto">
-              <h2>Departamento académico</h2>
-              <p>Ingenierías, Económico-Administrativo, Carreras virtuales y más.</p>
-            </div>
-            <div class="card-icono" aria-hidden="true">
-              <svg viewBox="0 0 24 24" class="card-icono-svg">
-                <path d="M4 21V8l8-5 8 5v13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
-                <path d="M9 21V12h6v9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
-              </svg>
-            </div>
-          </button>
           <button type="button" class="card" (click)="irAltaEgresadosUsuarios()">
             <div class="card-texto">
               <h2>{{ tituloCardAlta }}</h2>
@@ -201,10 +189,6 @@ export class CoordinadorInicioComponent {
     return this.auth.puedeAdministrarUsuariosStaff()
       ? 'Registro de alumnos, documentos y usuarios del personal.'
       : 'Registro de alumnos y documentos de titulación.';
-  }
-
-  irDepartamentoAcademicoMenu(): void {
-    this.router.navigate(['/home/departamento-academico']);
   }
 
   irAltaEgresadosUsuarios(): void {

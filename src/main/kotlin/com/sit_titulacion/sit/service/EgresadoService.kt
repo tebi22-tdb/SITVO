@@ -1,6 +1,5 @@
 package com.sit_titulacion.sit.service
 
-import com.sit_titulacion.sit.config.RolSoporte
 import com.sit_titulacion.sit.domain.AnexoXxxi
 import com.sit_titulacion.sit.domain.ConstanciaNoInconveniencia
 import com.sit_titulacion.sit.domain.DatosPersonales
@@ -12,7 +11,6 @@ import com.sit_titulacion.sit.domain.DocumentacionEscaneada
 import com.sit_titulacion.sit.domain.Egresado
 import com.sit_titulacion.sit.domain.HistorialEstado
 import com.sit_titulacion.sit.domain.SinodalesTribunal
-import com.sit_titulacion.sit.repository.CatalogoRepository
 import com.sit_titulacion.sit.repository.DocumentacionEscaneadaRepository
 import com.sit_titulacion.sit.repository.EgresadoRepository
 import com.sit_titulacion.sit.repository.UsuarioRepository
@@ -65,30 +63,17 @@ data class DocumentoStream(
     val fileName: String,
 )
 
-/** PDF ya leído a memoria (mejor detrás de Nginx/proxy que streamear GridFS sin Content-Length). */
-data class DocumentoBytes(
-    val bytes: ByteArray,
-    val contentType: String,
-    val fileName: String,
-)
-
-/** Respuesta de verificación de número de control en formulario de alta. */
-data class VerificacionDuplicadoAlta(
-    val estado: String,
-    val expedienteEstado: String? = null,
-)
-
 @Service
 class EgresadoService(
     private val egresadoRepository: EgresadoRepository,
     private val documentacionEscaneadaRepository: DocumentacionEscaneadaRepository,
-    private val catalogoRepository: CatalogoRepository,
     private val usuarioRepository: UsuarioRepository,
     private val gridFsTemplate: GridFsTemplate,
     private val env: Environment,
     private val htmlAnexoPdfService: HtmlAnexoPdfService,
     private val revisionService: RevisionService,
     private val certService: CertificacionPdfService,
+    private val catalogoService: CatalogoService,
 ) {
     private val log = LoggerFactory.getLogger(EgresadoService::class.java)
 
@@ -300,29 +285,25 @@ class EgresadoService(
         scopeUsername: String? = null,
     ): List<EgresadoListItemDto> = listarParaLista(numeroControlFilter, scopeUsername)
 
-    fun contarParaDepartamento(academicoUsername: String, segmentoSlug: String? = null): Map<String, Int> {
+    fun contarParaDepartamento(academicoUsername: String): Map<String, Int> {
         val allBase = filtrarEgresadosPorCarreraSiAcademico(egresadoRepository.findAll(), academicoUsername)
-        // Coordinador filtrando por departamento (?segmento=): misma bandeja que académicos (incluye residencia).
-        val excluirResidencia =
-            bandejaDepartamentoExcluyeResidencia(academicoUsername) && segmentoSlug.isNullOrBlank()
-        val afterModalidad =
-            if (excluirResidencia) {
+        val all =
+            if (bandejaDepartamentoExcluyeResidencia(academicoUsername)) {
                 allBase.filter { !esResidenciaProfesional(it) }
             } else {
                 allBase
             }
-        val all = aplicarFiltroSegmentoCoordinacion(afterModalidad, segmentoSlug, academicoUsername)
         val pendientes = all.count {
             it.fechaEnviadoDepartamentoAcademico != null &&
-                !liberacionRevisionCompletada(it) &&
+                it.fechaRecibidoRegistroLiberacion == null &&
                 !enCorreccionAcademico(it)
         }
         val enCorreccion = all.count {
             it.fechaEnviadoDepartamentoAcademico != null &&
-                !liberacionRevisionCompletada(it) &&
+                it.fechaRecibidoRegistroLiberacion == null &&
                 enCorreccionAcademico(it)
         }
-        val aprobados = all.count { liberacionRevisionCompletada(it) }
+        val aprobados = all.count { it.fechaRecibidoRegistroLiberacion != null }
         val todos = all.count { it.fechaEnviadoDepartamentoAcademico != null }
         val sinodales = all.count { it.fechaSolicitudSinodales != null && it.fechaConfirmacionSinodalesRecibidos == null }
         return mapOf(
@@ -334,20 +315,17 @@ class EgresadoService(
         )
     }
 
-    fun listarParaDepartamento(estado: String, academicoUsername: String, segmentoSlug: String? = null): List<DepartamentoListItemDto> {
+    fun listarParaDepartamento(estado: String, academicoUsername: String): List<DepartamentoListItemDto> {
         val allBase = filtrarEgresadosPorCarreraSiAcademico(egresadoRepository.findAll(), academicoUsername)
-        val excluirResidencia =
-            bandejaDepartamentoExcluyeResidencia(academicoUsername) && segmentoSlug.isNullOrBlank()
-        val afterModalidad =
-            if (excluirResidencia) {
+        val all =
+            if (bandejaDepartamentoExcluyeResidencia(academicoUsername)) {
                 allBase.filter { !esResidenciaProfesional(it) }
             } else {
                 allBase
             }
-        val all = aplicarFiltroSegmentoCoordinacion(afterModalidad, segmentoSlug, academicoUsername)
         val norm = estado.trim().lowercase()
         val lista = when (norm) {
-            "aprobados" -> all.filter { liberacionRevisionCompletada(it) }
+            "aprobados" -> all.filter { it.fechaRecibidoRegistroLiberacion != null }
             "sinodales" ->
                 all
                     .filter { it.fechaSolicitudSinodales != null }
@@ -360,12 +338,12 @@ class EgresadoService(
             "todos" -> all.filter { it.fechaEnviadoDepartamentoAcademico != null }
             "en_correccion" -> all.filter {
                 it.fechaEnviadoDepartamentoAcademico != null &&
-                    !liberacionRevisionCompletada(it) &&
+                    it.fechaRecibidoRegistroLiberacion == null &&
                     enCorreccionAcademico(it)
             }
             else -> all.filter {
                 it.fechaEnviadoDepartamentoAcademico != null &&
-                    !liberacionRevisionCompletada(it) &&
+                    it.fechaRecibidoRegistroLiberacion == null &&
                     !enCorreccionAcademico(it)
             }
         }
@@ -410,35 +388,6 @@ class EgresadoService(
         return egresados.filter { carreraPermitidaParaAcademico(it.datos_personales.carrera, permitidas) }
     }
 
-    /**
-     * Coordinador / apoyo / división: filtra la bandeja por slug de departamento académico (`catalogos` tipo departamento).
-     * No aplica a usuarios con rol `academico` (usan su asignación en BD).
-     */
-    private fun aplicarFiltroSegmentoCoordinacion(
-        egresados: List<Egresado>,
-        segmentoSlug: String?,
-        username: String,
-    ): List<Egresado> {
-        val slug = segmentoSlug?.trim()?.lowercase() ?: return egresados
-        if (slug.isEmpty()) return egresados
-        if (!puedeUsarFiltroSegmentoCoordinacion(username)) return egresados
-        val cat = catalogoRepository.findByTipoAndSlug("departamento", slug) ?: return egresados
-        val permitidas = cat.carreras.map { it.trim() }.filter { it.isNotEmpty() }.toSet()
-        if (permitidas.isEmpty()) return egresados
-        return egresados.filter { carreraPermitidaParaAcademico(it.datos_personales.carrera, permitidas) }
-    }
-
-    private fun puedeUsarFiltroSegmentoCoordinacion(username: String): Boolean {
-        val u = usuarioRepository.findByUsername(username.trim()) ?: return false
-        return RolSoporte.tieneAlgunRol(
-            u.rol,
-            "coordinador",
-            "apoyo_titulacion",
-            "division_estudios_prof_admin",
-            "administrador",
-        )
-    }
-
     /** Conjunto de carreras asignadas al académico, o null si no aplica filtro. */
     private fun carrerasFiltroAcademico(username: String): Set<String>? {
         val u = usuarioRepository.findByUsername(username.trim()) ?: return null
@@ -472,13 +421,10 @@ class EgresadoService(
         val u = usuarioRepository.findByUsername(username.trim()) ?: return false
         if (!u.segmentoAcademico.isNullOrBlank()) return false
         if (u.carrerasAsignadas.isNotEmpty()) return false
-        return RolSoporte.tieneAlgunRol(
-            u.rol,
-            "coordinador",
-            "apoyo_titulacion",
-            "division_estudios_prof_admin",
-            "administrador",
-        )
+        val rol = u.rol.trim().lowercase().replace(' ', '_')
+        return rol == "coordinador" ||
+            rol == "apoyo_titulacion" ||
+            rol == "division_estudios_prof_admin"
     }
 
     private fun carreraPermitidaParaAcademico(carrera: String, permitidas: Set<String>): Boolean {
@@ -511,28 +457,6 @@ class EgresadoService(
             ?.let { toDetailDto(it) }
     }
 
-    /**
-     * Evita duplicar número de control en alta; al editar, [excluirId] es el expediente actual.
-     * [expedienteEstado]: vencido, titulado o en_proceso (texto en UI).
-     */
-    fun verificarDisponibilidadNumeroControlParaAlta(numero: String, excluirId: String?): VerificacionDuplicadoAlta {
-        val n = numero.trim()
-        if (n.isEmpty()) return VerificacionDuplicadoAlta("LIBRE", null)
-        val anchored = "^${Regex.escape(n)}$"
-        val e = egresadoRepository.listByNumeroControlRegexAnchoredCaseInsensitive(anchored).firstOrNull()
-            ?: egresadoRepository.findByNumeroControl(n)
-        if (e == null) return VerificacionDuplicadoAlta("LIBRE", null)
-        if (excluirId != null && e.id?.toString() == excluirId) {
-            return VerificacionDuplicadoAlta("LIBRE", null)
-        }
-        val ui = when (e.estado_general) {
-            "vencido" -> "vencido"
-            "titulado" -> "titulado"
-            else -> "en_proceso"
-        }
-        return VerificacionDuplicadoAlta("BLOQUEADO", ui)
-    }
-
     fun obtenerPorEgresadoId(egresadoId: ObjectId): EgresadoDetailDto? =
         egresadoRepository.findById(egresadoId).orElse(null)
             ?.let { verificarYMarcarVencido(it) }
@@ -554,28 +478,6 @@ class EgresadoService(
             contentType = adj.content_type.ifBlank { "application/octet-stream" },
             fileName = adj.nombre_original.ifBlank { "documento" },
         )
-    }
-
-    /** Obtiene el PDF de documentación escaneada enviado por el egresado (paso final). */
-    fun obtenerDocumentoEscaneadoProceso(id: String): DocumentoStream? {
-        val objectId = try { ObjectId(id) } catch (_: Exception) { return null }
-        val eg = egresadoRepository.findById(objectId).orElse(null) ?: return null
-        val entrega = documentacionEscaneadaRepository.findByEgresadoId(objectId) ?: return null
-        val archivo = entrega.archivos.firstOrNull() ?: return null
-        val file = gridFsTemplate.findOne(Query.query(Criteria.where("_id").`is`(archivo.gridfsId))) ?: return null
-        val resource = gridFsTemplate.getResource(file)
-        return DocumentoStream(
-            inputStream = resource.inputStream,
-            contentType = archivo.contentType.ifBlank { "application/pdf" },
-            fileName = archivo.nombreOriginal.ifBlank { "documentacion-escaneada.pdf" },
-        )
-    }
-
-    fun obtenerDocumentacionEscaneadaBytes(id: String): DocumentoBytes? {
-        val doc = obtenerDocumentoEscaneadoProceso(id) ?: return null
-        val bytes = doc.inputStream.use { it.readAllBytes() }
-        if (bytes.isEmpty()) return null
-        return DocumentoBytes(bytes = bytes, contentType = doc.contentType, fileName = doc.fileName)
     }
 
     /**
@@ -617,9 +519,6 @@ class EgresadoService(
         val objectId = try { ObjectId(id) } catch (_: Exception) { return false }
         val e = egresadoRepository.findById(objectId).orElse(null) ?: return false
         if (e.fechaEnviadoDepartamentoAcademico != null) return false
-        if (!esResidenciaProfesional(e) && e.fechaEnvioSolicitudRegistroAnteproyectoDeptoAcademico != null) {
-            if (e.fechaRecepcionRegistroLiberacionDeptoAcademico == null) return false
-        }
         val ahora = Instant.now()
 
         // Guardar timestamp primero: debe persistir aunque la certificación falle
@@ -670,78 +569,9 @@ class EgresadoService(
         return true
     }
 
-    /** Flujo 16 pasos (no residencia): envío de solicitud de registro y anteproyecto al departamento académico. */
-    fun solicitarRegistroAnteproyectoNoResidencia(id: String): Boolean {
-        val e = cargarEgresadoPorId(id) ?: return false
-        if (esResidenciaProfesional(e)) return false
-        if (e.fechaEnvioSolicitudRegistroAnteproyectoDeptoAcademico != null) return false
-        val ahora = Instant.now()
-        egresadoRepository.save(
-            e.copy(
-                fechaEnvioSolicitudRegistroAnteproyectoDeptoAcademico = ahora,
-                fecha_actualizacion = ahora,
-            ),
-        )
-        return true
-    }
-
-    /** Confirmación de recepción del trabajo en División de estudios profesionales. */
-    fun confirmarRecepcionTrabajoNoResidencia(id: String): Boolean {
-        val e = cargarEgresadoPorId(id) ?: return false
-        if (esResidenciaProfesional(e)) return false
-        if (e.fechaEnvioSolicitudRegistroAnteproyectoDeptoAcademico == null) return false
-        if (e.fechaRecepcionTrabajoDivisionEstudiosProf != null) return false
-        val ahora = Instant.now()
-        egresadoRepository.save(
-            e.copy(
-                fechaRecepcionTrabajoDivisionEstudiosProf = ahora,
-                fecha_actualizacion = ahora,
-            ),
-        )
-        return true
-    }
-
-    /** Solicitud de registro y liberación al departamento académico. */
-    fun solicitarRegistroLiberacionNoResidencia(id: String): Boolean {
-        val e = cargarEgresadoPorId(id) ?: return false
-        if (esResidenciaProfesional(e)) return false
-        if (e.fechaRecepcionTrabajoDivisionEstudiosProf == null) return false
-        if (e.fechaSolicitudRegistroLiberacionDeptoAcademico != null) return false
-        val ahora = Instant.now()
-        egresadoRepository.save(
-            e.copy(
-                fechaSolicitudRegistroLiberacionDeptoAcademico = ahora,
-                fecha_actualizacion = ahora,
-            ),
-        )
-        return true
-    }
-
-    /** Recepción de registro y liberación por el departamento académico. */
-    fun confirmarRecepcionRegistroLiberacionNoResidencia(id: String): Boolean {
-        val e = cargarEgresadoPorId(id) ?: return false
-        if (esResidenciaProfesional(e)) return false
-        if (e.fechaSolicitudRegistroLiberacionDeptoAcademico == null) return false
-        if (e.fechaRecepcionRegistroLiberacionDeptoAcademico != null) return false
-        val ahora = Instant.now()
-        egresadoRepository.save(
-            e.copy(
-                fechaRecepcionRegistroLiberacionDeptoAcademico = ahora,
-                fecha_actualizacion = ahora,
-            ),
-        )
-        return true
-    }
-
     fun confirmarRecibidosAnexoXxxiXxxii(id: String): Boolean {
         val e = cargarEgresadoPorId(id) ?: return false
-        val puede =
-            if (!esResidenciaProfesional(e) && e.fechaEnvioSolicitudRegistroAnteproyectoDeptoAcademico != null) {
-                e.fechaLiberacionDocumentoCoordinacionCat != null
-            } else {
-                e.fechaRecibidoRegistroLiberacion != null
-            }
-        if (!puede) return false
+        if (e.fechaRecibidoRegistroLiberacion == null) return false
         if (e.fechaConfirmacionRecibidosAnexoXxxiXxxii != null) return false
         val ahora = Instant.now()
         egresadoRepository.save(
@@ -756,11 +586,22 @@ class EgresadoService(
     fun crearAnexo91(id: String): ByteArray? {
         val e = cargarEgresadoPorId(id) ?: return null
         if (e.fechaConfirmacionRecibidosAnexoXxxiXxxii == null) return null
+        val ahora = Instant.now()
+        val certUuid91 = e.certUuid91 ?: certService.generarCertUuid()
+        if (e.fechaCreacionAnexo91 == null || e.certUuid91 == null) {
+            egresadoRepository.save(
+                e.copy(
+                    fechaCreacionAnexo91 = e.fechaCreacionAnexo91 ?: ahora,
+                    certUuid91 = certUuid91,
+                    fecha_actualizacion = ahora,
+                ),
+            )
+        }
         val destinatarioServicios =
             env.getProperty("sit.anexo91.destinatario-servicios-escolares")?.trim().orEmpty()
         val destinatarioServiciosFinal =
             if (destinatarioServicios.isNotEmpty()) destinatarioServicios else "ROMEO ALBERTO ANGELES PEREZ"
-        val ahora = Instant.now()
+        val qrDataUri = certService.generarQrDataUri(certUuid91)
         val valores =
             construirValoresPlantillaHtml(
                 e,
@@ -769,18 +610,11 @@ class EgresadoService(
                     "FECHA_CARTA" to fechaCartaEspanola(ahora),
                     "TEXTO_OPCION_TI" to textoOpcionTitulacionIntegral(e.datos_proyecto.modalidad),
                     "DESTINATARIO_SERVICIOS_ESCOLARES" to destinatarioServiciosFinal,
+                    "QR_CODE" to qrDataUri,
                 ),
             )
-        val pdf = htmlAnexoPdfService.generarDesdeClasspath("templates/html/anexo-9-1.html", valores)
-        if (pdf == null) {
-            log.warn("crearAnexo91: no se generó PDF (plantilla/HTML o motor OpenHTMLtoPDF) para egresado id={}", id)
-            return null
-        }
-        // Solo marcar creación en BD si el PDF salió bien (evita expediente “con 9.1” sin archivo).
-        if (e.fechaCreacionAnexo91 == null) {
-            egresadoRepository.save(e.copy(fechaCreacionAnexo91 = ahora, fecha_actualizacion = ahora))
-        }
-        return pdf
+        val pdfHtml = htmlAnexoPdfService.generarDesdeClasspath("templates/html/anexo-9-1.html", valores) ?: return null
+        return certService.certificarAnexoPdf(pdfHtml) ?: pdfHtml
     }
 
     fun confirmarEntregaAnexo91(id: String): Boolean {
@@ -880,8 +714,15 @@ class EgresadoService(
         val e = cargarEgresadoPorId(id) ?: return null
         if (e.fechaAgendaActo93 == null) return null
         val ahora = Instant.now()
-        if (e.fechaCreacionAnexo93 == null) {
-            egresadoRepository.save(e.copy(fechaCreacionAnexo93 = ahora, fecha_actualizacion = ahora))
+        val certUuid93 = e.certUuid93 ?: certService.generarCertUuid()
+        if (e.fechaCreacionAnexo93 == null || e.certUuid93 == null) {
+            egresadoRepository.save(
+                e.copy(
+                    fechaCreacionAnexo93 = e.fechaCreacionAnexo93 ?: ahora,
+                    certUuid93 = certUuid93,
+                    fecha_actualizacion = ahora,
+                ),
+            )
         }
         val zona = ZoneId.systemDefault()
         val acto = e.fechaAgendaActo93!!
@@ -894,6 +735,7 @@ class EgresadoService(
         val horaActo = String.format(Locale.ROOT, "%02d:%02d", zActo.hour, zActo.minute)
         val jefeDivisionNombre =
             env.getProperty("sit.anexo93.jefe-division-nombre", "MANUEL FABIAN ROJAS").trim()
+        val qrDataUri = certService.generarQrDataUri(certUuid93)
         val valores =
             construirValoresPlantillaHtml(
                 e,
@@ -910,9 +752,11 @@ class EgresadoService(
                     "VOCAL" to (e.sinodalesTribunal?.vocal ?: ""),
                     "VOCAL_SUPLENTE" to (e.sinodalesTribunal?.vocal_suplente ?: ""),
                     "JEFE_DIVISION_NOMBRE" to jefeDivisionNombre,
+                    "QR_CODE" to qrDataUri,
                 ),
             )
-        return htmlAnexoPdfService.generarDesdeClasspath("templates/html/anexo-9-3.html", valores)
+        val pdfHtml = htmlAnexoPdfService.generarDesdeClasspath("templates/html/anexo-9-3.html", valores) ?: return null
+        return certService.certificarAnexoPdf(pdfHtml) ?: pdfHtml
     }
 
     /** Marca entrega del anexo 9.3 a sinodales y sustentante (solo tras generar el PDF). */
@@ -943,30 +787,6 @@ class EgresadoService(
         if (e.fechaConfirmacionDocumentacionEscaneadaRecibida != null) return false
         val ahora = Instant.now()
         egresadoRepository.save(e.copy(fechaConfirmacionDocumentacionEscaneadaRecibida = ahora, fecha_actualizacion = ahora))
-        return true
-    }
-
-    /**
-     * La DEP solicita corregir y reenviar la documentación escaneada.
-     * Reinicia el envío del egresado para habilitar una nueva carga y guarda observaciones.
-     */
-    fun solicitarDocumentacionEscaneadaNuevamente(id: String, observaciones: String?): Boolean {
-        val e = cargarEgresadoPorId(id) ?: return false
-        if (e.fechaSolicitudDocumentacionEscaneada == null) return false
-        if (e.fechaEnvioDocumentacionEscaneadaEgresado == null) return false
-        if (e.fechaConfirmacionDocumentacionEscaneadaRecibida != null) return false
-        val obs = observaciones?.trim()?.takeIf { it.isNotEmpty() }
-        val ahora = Instant.now()
-        eliminarEntregaEscaneadaAnterior(e.id ?: return false)
-        egresadoRepository.save(
-            e.copy(
-                fechaEnvioDocumentacionEscaneadaEgresado = null,
-                fechaConfirmacionDocumentacionEscaneadaRecibida = null,
-                fechaSolicitudReenvioDocumentacionEscaneada = ahora,
-                observacionesReenvioDocumentacionEscaneada = obs,
-                fecha_actualizacion = ahora,
-            ),
-        )
         return true
     }
 
@@ -1020,8 +840,6 @@ class EgresadoService(
         egresadoRepository.save(
             e.copy(
                 fechaEnvioDocumentacionEscaneadaEgresado = ahora,
-                fechaSolicitudReenvioDocumentacionEscaneada = null,
-                observacionesReenvioDocumentacionEscaneada = null,
                 fecha_actualizacion = ahora,
             ),
         )
@@ -1067,7 +885,7 @@ class EgresadoService(
 
     fun agendarActo93(id: String, fechaHoraRaw: String): Boolean {
         val e = cargarEgresadoPorId(id) ?: return false
-        if (e.fechaConfirmacionSinodalesRecibidos == null) return false
+        if (e.fechaConfirmacionSinodalesRecibidos == null || e.fechaAgendaActo93 != null) return false
 
         val inicio = parseFechaHoraLocal(fechaHoraRaw) ?: return false
         val zona = ZoneId.systemDefault()
@@ -1086,58 +904,10 @@ class EgresadoService(
             inicio.minus(1, ChronoUnit.HOURS),
             fin,
         )
-        if (candidates.any { it.id != e.id }) return false
+        if (candidates.isNotEmpty()) return false
 
         val ahora = Instant.now()
-        val reagenda = e.fechaAgendaActo93 != null
-        if (reagenda) {
-            e.id?.let { eliminarEntregaEscaneadaAnterior(it) }
-        }
-
-        var gridFinal = e.gridfsIdDocFinal
-        var fechaSubidaFinal = e.fechaSubidaDocFinal
-        var fechaTitulacionVal = e.fechaTitulacion
-        var estado = e.estado_general
-        var historial = e.historial_estados
-        if (reagenda && e.estado_general == "titulado") {
-            gridFinal?.let { gid ->
-                try {
-                    gridFsTemplate.delete(Query.query(Criteria.where("_id").`is`(gid)))
-                } catch (ex: Exception) {
-                    log.warn("GridFS doc final {} no eliminado al reagendar 9.3: {}", gid, ex.message)
-                }
-            }
-            gridFinal = null
-            fechaSubidaFinal = null
-            fechaTitulacionVal = null
-            estado = "registrado"
-            historial = historial + HistorialEstado(
-                estado = "registrado",
-                fecha = ahora,
-                observacion = "Reagenda acto protocolario 9.3: se reinician pasos posteriores al agendamiento.",
-            )
-        }
-
-        egresadoRepository.save(
-            e.copy(
-                fechaAgendaActo93 = inicio,
-                fechaReagendaActo93 = if (reagenda) ahora else null,
-                // Reagenda: repetir generación 9.3, entrega, solicitud/envío/confirmación de documentación escaneada.
-                fechaCreacionAnexo93 = if (reagenda) null else e.fechaCreacionAnexo93,
-                fechaConfirmacionEntregaAnexo93 = if (reagenda) null else e.fechaConfirmacionEntregaAnexo93,
-                fechaSolicitudDocumentacionEscaneada = if (reagenda) null else e.fechaSolicitudDocumentacionEscaneada,
-                fechaEnvioDocumentacionEscaneadaEgresado = if (reagenda) null else e.fechaEnvioDocumentacionEscaneadaEgresado,
-                fechaConfirmacionDocumentacionEscaneadaRecibida = if (reagenda) null else e.fechaConfirmacionDocumentacionEscaneadaRecibida,
-                fechaSolicitudReenvioDocumentacionEscaneada = if (reagenda) null else e.fechaSolicitudReenvioDocumentacionEscaneada,
-                observacionesReenvioDocumentacionEscaneada = if (reagenda) null else e.observacionesReenvioDocumentacionEscaneada,
-                gridfsIdDocFinal = if (reagenda) gridFinal else e.gridfsIdDocFinal,
-                fechaSubidaDocFinal = if (reagenda) fechaSubidaFinal else e.fechaSubidaDocFinal,
-                fechaTitulacion = if (reagenda) fechaTitulacionVal else e.fechaTitulacion,
-                estado_general = if (reagenda) estado else e.estado_general,
-                historial_estados = if (reagenda) historial else e.historial_estados,
-                fecha_actualizacion = ahora,
-            ),
-        )
+        egresadoRepository.save(e.copy(fechaAgendaActo93 = inicio, fecha_actualizacion = ahora))
         return true
     }
 
@@ -1196,16 +966,6 @@ class EgresadoService(
             estado_general = e.estado_general,
             fecha_creacion = e.fechaCreacion.let { formatter.format(it) },
             fecha_actualizacion = e.fecha_actualizacion.let { formatter.format(it) },
-            fecha_envio_solicitud_registro_anteproyecto_depto_academico =
-                e.fechaEnvioSolicitudRegistroAnteproyectoDeptoAcademico?.let { formatter.format(it) },
-            fecha_recepcion_trabajo_division_estudios_prof =
-                e.fechaRecepcionTrabajoDivisionEstudiosProf?.let { formatter.format(it) },
-            fecha_solicitud_registro_liberacion_depto_academico =
-                e.fechaSolicitudRegistroLiberacionDeptoAcademico?.let { formatter.format(it) },
-            fecha_recepcion_registro_liberacion_depto_academico =
-                e.fechaRecepcionRegistroLiberacionDeptoAcademico?.let { formatter.format(it) },
-            fecha_liberacion_documento_coordinacion_cat =
-                e.fechaLiberacionDocumentoCoordinacionCat?.let { formatter.format(it) },
             fecha_enviado_departamento_academico = e.fechaEnviadoDepartamentoAcademico?.let { formatter.format(it) },
             fecha_recibido_registro_liberacion = e.fechaRecibidoRegistroLiberacion?.let { formatter.format(it) },
             fecha_confirmacion_recibidos_anexo_xxxi_xxxii = e.fechaConfirmacionRecibidosAnexoXxxiXxxii?.let { formatter.format(it) },
@@ -1218,7 +978,6 @@ class EgresadoService(
             fecha_asignacion_sinodales = e.fechaAsignacionSinodales?.let { formatter.format(it) },
             fecha_confirmacion_sinodales_recibidos = e.fechaConfirmacionSinodalesRecibidos?.let { formatter.format(it) },
             fecha_agenda_acto_9_3 = e.fechaAgendaActo93?.let { formatter.format(it) },
-            fecha_reagenda_acto_9_3 = e.fechaReagendaActo93?.let { formatter.format(it) },
             fecha_creacion_anexo_9_3 = e.fechaCreacionAnexo93?.let { formatter.format(it) },
             fecha_confirmacion_entrega_anexo_9_3 = e.fechaConfirmacionEntregaAnexo93?.let { formatter.format(it) },
             fecha_titulacion = e.fechaTitulacion?.let { formatter.format(it) },
@@ -1226,9 +985,6 @@ class EgresadoService(
             fecha_solicitud_documentacion_escaneada = e.fechaSolicitudDocumentacionEscaneada?.let { formatter.format(it) },
             fecha_envio_documentacion_escaneada_egresado = e.fechaEnvioDocumentacionEscaneadaEgresado?.let { formatter.format(it) },
             fecha_confirmacion_documentacion_escaneada_recibida = e.fechaConfirmacionDocumentacionEscaneadaRecibida?.let { formatter.format(it) },
-            fecha_solicitud_reenvio_documentacion_escaneada =
-                e.fechaSolicitudReenvioDocumentacionEscaneada?.let { formatter.format(it) },
-            observaciones_reenvio_documentacion_escaneada = e.observacionesReenvioDocumentacionEscaneada,
         )
     }
 
@@ -1258,18 +1014,10 @@ class EgresadoService(
 
     private fun parseFechaHoraLocal(s: String?): Instant? {
         if (s.isNullOrBlank()) return null
-        val raw = s.trim()
-        val normalized = if (!raw.contains('T') && raw.contains(' ')) raw.replaceFirst(" ", "T") else raw
         return try {
-            LocalDateTime.parse(normalized, DateTimeFormatter.ISO_LOCAL_DATE_TIME)
-                .atZone(ZoneId.systemDefault())
-                .toInstant()
-        } catch (_: DateTimeParseException) {
-            try {
-                LocalDateTime.parse(normalized).atZone(ZoneId.systemDefault()).toInstant()
-            } catch (_: Exception) {
-                null
-            }
+            LocalDateTime.parse(s.trim()).atZone(ZoneId.systemDefault()).toInstant()
+        } catch (_: Exception) {
+            null
         }
     }
 
@@ -1288,11 +1036,7 @@ class EgresadoService(
     }
 
     private fun esResidenciaProfesional(e: Egresado): Boolean =
-        e.datos_proyecto.modalidad.trim().equals("Residencia Profesional", ignoreCase = true)
-
-    /** Revisión académica/CAT: liberación vía campo clásico o flujo extendido no residencia. */
-    private fun liberacionRevisionCompletada(e: Egresado): Boolean =
-        e.fechaRecibidoRegistroLiberacion != null || e.fechaLiberacionDocumentoCoordinacionCat != null
+        catalogoService.esResidenciaPorNombre(e.datos_proyecto.modalidad)
 
     private fun ultimaRevisionResultado(e: Egresado): String? {
         val oid = e.id ?: return null
@@ -1304,7 +1048,7 @@ class EgresadoService(
         !esResidenciaProfesional(e) && ultimaRevisionResultado(e) == "observaciones"
 
     private fun estadoRevisionDepartamento(e: Egresado): String {
-        if (liberacionRevisionCompletada(e)) return "aprobado"
+        if (e.fechaRecibidoRegistroLiberacion != null) return "aprobado"
         if (enCorreccionAcademico(e)) return "con_observaciones"
         return "pendiente"
     }
@@ -1515,19 +1259,8 @@ class EgresadoService(
         return true
     }
 
-    private fun mesesPorModalidad(modalidad: String): Long? {
-        val m = modalidad.trim().lowercase()
-        return when {
-            m.contains("residencia")   -> 6L
-            m.contains("monograf")     -> 18L
-            m.contains("tesina")       -> 12L
-            m.contains("tesis")        -> 12L
-            m.contains("curso")        -> 12L
-            m.contains("investigaci")  -> 12L
-            m.contains("ceneval")      -> null
-            else                       -> 12L
-        }
-    }
+    private fun mesesPorModalidad(modalidad: String): Long? =
+        catalogoService.mesesVigenciaPorNombre(modalidad)
 
     private fun verificarYMarcarVencido(e: Egresado): Egresado {
         if (e.estado_general == "titulado" || e.estado_general == "vencido") return e

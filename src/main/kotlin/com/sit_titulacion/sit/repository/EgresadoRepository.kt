@@ -21,14 +21,6 @@ interface EgresadoRepository : MongoRepository<Egresado, ObjectId> {
     @Query("{ 'numero_control' : ?0 }")
     fun findByNumeroControl(numeroControl: String): Egresado?
 
-    /**
-     * Coincidencia exacta ignorando mayúsculas (pasar patrón anclado, p. ej. `^${Regex.escape(control)}$`).
-     * No usar nombre derivado `findByNumeroControlIgnoreCase`: el dominio usa `numero_control`, no `numeroControl`.
-     */
-    @Meta(maxExecutionTimeMs = 5000)
-    @Query("{ 'numero_control' : { \$regex: ?0, \$options: 'i' } }")
-    fun listByNumeroControlRegexAnchoredCaseInsensitive(anchoredPattern: String): List<Egresado>
-
     /** Buscar por número de control (contiene el texto, sin distinguir mayúsculas). */
     @Query("{ 'numero_control' : { \$regex: ?0, \$options: 'i' } }")
     fun findByNumeroControlContaining(numeroControl: String): List<Egresado>
@@ -82,6 +74,11 @@ interface EgresadoRepository : MongoRepository<Egresado, ObjectId> {
     @Meta(maxExecutionTimeMs = 5000)
     @Query("{ 'cert_uuid' : ?0 }")
     fun findByCertUuid(certUuid: String): Egresado?
+
+    /** Busca en los tres campos UUID (documento principal, anexo 9.1, anexo 9.3). */
+    @Meta(maxExecutionTimeMs = 5000)
+    @Query("{ \$or: [{'cert_uuid': ?0}, {'cert_uuid_91': ?0}, {'cert_uuid_93': ?0}] }")
+    fun findByCertUuidAny(certUuid: String): Egresado?
 
     /** Repositorio público: egresados por estado_general (p. ej. "titulado"). */
     @Meta(maxExecutionTimeMs = 5000)

@@ -1,13 +1,12 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { DomSanitizer, SafeResourceUrl, SafeUrl } from '@angular/platform-browser';
 import { Subscription } from 'rxjs';
 import { HeaderComponent } from '../../layout/header/header.component';
 import { AuthService } from '../../services/auth.service';
-import { obtenerSegmentoAcademicoDef } from '../../core/segmentos-academicos';
+import { CatalogoService } from '../../services/catalogo.service';
 import { EgresadoService, DepartamentoListItem, DepartamentoCounts } from '../../services/egresado.service';
 
 type TabEstado = 'pendientes' | 'en_correccion' | 'aprobados' | 'sinodales' | 'todos';
@@ -22,15 +21,13 @@ export class DepartamentoAcademicoComponent implements OnInit, OnDestroy {
   tabActivo: TabEstado = 'pendientes';
   tituloDepartamento = 'Coordinacion de apoyo a la titulacion';
   esModoRevision = false;
-  /** Filtro por slug de departamento (solo coordinación; query `?segmento=`). */
-  segmentoCoordinacion: string | null = null;
   counts: DepartamentoCounts = { pendientes: 0, en_correccion: 0, aprobados: 0, todos: 0, sinodales_por_asignar: 0 };
   lista: DepartamentoListItem[] = [];
   cargando = true;
   error = '';
   /** ID del egresado mientras se ejecuta Liberar (evita doble clic). */
   liberandoId: string | null = null;
-  /** Número de control para buscar (pestañas Todos/Sinodales). */
+  /** Número de control para buscar (solo pestaña Todos). */
   searchNumeroControl = '';
   /** Filtro aplicado al hacer clic en Buscar. */
   filtroNumeroControl = '';
@@ -58,32 +55,22 @@ export class DepartamentoAcademicoComponent implements OnInit, OnDestroy {
   documentoContentType = '';
   documentoFileName = '';
   private docSub: Subscription | null = null;
-  private querySub: Subscription | null = null;
 
   constructor(
     private egresadoService: EgresadoService,
     private authService: AuthService,
     private router: Router,
-    private route: ActivatedRoute,
     private sanitizer: DomSanitizer,
+    private catalogoService: CatalogoService,
   ) {}
 
   ngOnDestroy(): void {
-    this.querySub?.unsubscribe();
     this.revocarDocumentoUrl();
     this.docSub?.unsubscribe();
   }
 
   get esDocumentoPdf(): boolean {
     return (this.documentoContentType || '').toLowerCase().includes('pdf');
-  }
-
-  /**
-   * Pestañas "En corrección / Aprobados" solo en vista global de coordinación.
-   * Con `?segmento=` la bandeja es la del departamento (Pendientes, Sinodales, Todos), como usuario académico.
-   */
-  get mostrarTabsRevisionCoordinacion(): boolean {
-    return this.esModoRevision && !this.segmentoCoordinacion;
   }
 
   /**
@@ -152,7 +139,7 @@ export class DepartamentoAcademicoComponent implements OnInit, OnDestroy {
 
   /** Abre Revisión de documento (solo para modalidades que no son Residencia Profesional). */
   irARevision(item: DepartamentoListItem): void {
-    if (item.modalidad === 'Residencia Profesional') return;
+    if (this.catalogoService.esResidencia(item.modalidad ?? '')) return;
     if (this.authService.isAcademico()) {
       this.router.navigate(['/departamento-academico/revision', item.id]);
     } else {
@@ -160,10 +147,9 @@ export class DepartamentoAcademicoComponent implements OnInit, OnDestroy {
     }
   }
 
-  /** Lista a mostrar: en "Todos" y "Sinodales" filtrada por número de control si hay búsqueda. */
+  /** Lista a mostrar: en "Todos" filtrada por número de control si hay búsqueda. */
   get listaVisible(): DepartamentoListItem[] {
-    const tabConBusqueda = this.tabActivo === 'todos' || this.tabActivo === 'sinodales';
-    if (!tabConBusqueda || !this.filtroNumeroControl.trim()) {
+    if (this.tabActivo !== 'todos' || !this.filtroNumeroControl.trim()) {
       return this.lista;
     }
     const term = this.filtroNumeroControl.trim().toLowerCase();
@@ -171,10 +157,10 @@ export class DepartamentoAcademicoComponent implements OnInit, OnDestroy {
   }
 
   get mensajeListaVacia(): string {
-    if ((this.tabActivo === 'todos' || this.tabActivo === 'sinodales') && this.filtroNumeroControl.trim()) {
+    if (this.tabActivo === 'todos' && this.filtroNumeroControl.trim()) {
       return 'No se encontró ningún registro con ese número de control.';
     }
-    if (this.mostrarTabsRevisionCoordinacion && this.tabActivo === 'en_correccion') {
+    if (this.esModoRevision && this.tabActivo === 'en_correccion') {
       return 'No hay expedientes en corrección.';
     }
     if (this.tabActivo === 'sinodales') {
@@ -189,33 +175,17 @@ export class DepartamentoAcademicoComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     const usuario = this.authService.getUsuario();
-    const segmentoUsuario = obtenerSegmentoAcademicoDef(usuario?.segmento_academico ?? '');
-    this.esModoRevision = !segmentoUsuario && !(usuario?.carreras_asignadas?.length ?? 0);
-    this.tituloDepartamento = this.esModoRevision
-      ? 'Coordinacion de apoyo a la titulacion'
-      : (segmentoUsuario?.nombre ?? 'Coordinacion de apoyo a la titulacion');
-
-    this.querySub = this.route.queryParamMap.subscribe((q) => {
-      const s = q.get('segmento')?.trim() || null;
-      this.segmentoCoordinacion = this.authService.isAcademico() ? null : s;
-      if (this.segmentoCoordinacion && (this.tabActivo === 'en_correccion' || this.tabActivo === 'aprobados')) {
-        this.tabActivo = 'pendientes';
-      }
-      if (this.esModoRevision) {
-        if (this.segmentoCoordinacion) {
-          const seg = obtenerSegmentoAcademicoDef(this.segmentoCoordinacion);
-          this.tituloDepartamento = seg?.nombre ?? 'Coordinación de apoyo a la titulación';
-        } else {
-          this.tituloDepartamento = 'Coordinación de apoyo a la titulación';
-        }
-      }
-      this.cargarCounts();
-      this.cargarLista();
-    });
+    const nombreDept =
+      this.catalogoService.nombreDepartamentoPorSlug(usuario?.segmento_academico ?? '') ??
+      this.catalogoService.inferirNombreDepartamentoPorCarreras(usuario?.carreras_asignadas ?? []);
+    this.esModoRevision = !nombreDept && !(usuario?.carreras_asignadas?.length ?? 0);
+    this.tituloDepartamento = nombreDept ?? 'Coordinacion de apoyo a la titulacion';
+    this.cargarCounts();
+    this.cargarLista();
   }
 
   cargarCounts(): void {
-    this.egresadoService.getDepartamentoCounts(this.segmentoCoordinacion).subscribe({
+    this.egresadoService.getDepartamentoCounts().subscribe({
       next: (c) => {
         this.counts = {
           pendientes: c.pendientes ?? 0,
@@ -232,7 +202,7 @@ export class DepartamentoAcademicoComponent implements OnInit, OnDestroy {
   cargarLista(): void {
     this.error = '';
     this.cargando = true;
-    this.egresadoService.listarDepartamento(this.tabActivo, this.segmentoCoordinacion).subscribe({
+    this.egresadoService.listarDepartamento(this.tabActivo).subscribe({
       next: (items) => {
         this.lista = items;
         this.cargando = false;
@@ -242,31 +212,15 @@ export class DepartamentoAcademicoComponent implements OnInit, OnDestroy {
           else this.limpiarSeleccionDocumento();
         }
       },
-      error: (err: HttpErrorResponse) => {
-        const st = err.status;
-        const detalle =
-          (typeof err.error === 'object' && err.error && 'error' in err.error
-            ? String((err.error as { error?: string }).error)
-            : '') || err.message;
-        if (st === 403) {
-          this.error =
-            'No tienes permiso para ver esta lista. Si acabas de actualizar el sistema, cierra sesión, vuelve a entrar y asegúrate de que el backend esté en la versión nueva.';
-        } else if (st === 0 || st === 504) {
-          this.error =
-            'No hay conexión con el backend (¿corre Spring Boot en el puerto 8081 con `npm start` y el proxy?).';
-        } else {
-          this.error =
-            st > 0
-              ? `No se pudo cargar la lista (${st}).${detalle ? ` ${detalle}` : ''}`
-              : 'No se pudo cargar la lista.';
-        }
+      error: () => {
+        this.error = 'No se pudo cargar la lista.';
         this.cargando = false;
       },
     });
   }
 
   cambiarTab(tab: TabEstado): void {
-    if (this.mostrarTabsRevisionCoordinacion && tab === 'sinodales') return;
+    if (this.esModoRevision && tab === 'sinodales') return;
     this.tabActivo = tab;
     this.filtroNumeroControl = '';
     this.limpiarSeleccionDocumento();

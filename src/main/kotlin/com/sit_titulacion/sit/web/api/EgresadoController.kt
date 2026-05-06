@@ -1,6 +1,5 @@
 package com.sit_titulacion.sit.web.api
 
-import com.sit_titulacion.sit.config.RolSoporte
 import com.sit_titulacion.sit.config.UsuarioPrincipal
 import com.sit_titulacion.sit.repository.EgresadoRepository
 import com.sit_titulacion.sit.service.EgresadoService
@@ -16,7 +15,6 @@ import com.sit_titulacion.sit.web.api.dto.AgendarActoRequestDto
 import com.sit_titulacion.sit.web.api.dto.AsignarSinodalesRequestDto
 import com.sit_titulacion.sit.web.api.dto.SinodalesRespuestaDto
 import com.sit_titulacion.sit.web.api.dto.RevisionDto
-import com.sit_titulacion.sit.web.api.dto.SolicitarReenvioDocumentacionEscaneadaRequestDto
 import com.sit_titulacion.sit.service.RevisionService
 import com.sit_titulacion.sit.service.DocumentoStream
 import com.sit_titulacion.sit.service.OriginalidadService
@@ -97,29 +95,25 @@ class EgresadoController(
 
     /** Conteos para pestañas del departamento / coordinación. Académico o personal de coordinación. */
     @GetMapping("/departamento/counts")
-    fun contarDepartamento(
-        @RequestParam(required = false) segmento: String?,
-        @AuthenticationPrincipal principal: UsuarioPrincipal?,
-    ): ResponseEntity<*> {
+    fun contarDepartamento(@AuthenticationPrincipal principal: UsuarioPrincipal?): ResponseEntity<*> {
         if (principal == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build<Void>()
         if (!puedeVerBandejaDepartamento(principal.getRol())) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build<Void>()
         }
-        return ResponseEntity.ok(egresadoService.contarParaDepartamento(principal.username, segmento))
+        return ResponseEntity.ok(egresadoService.contarParaDepartamento(principal.username))
     }
 
     /** Lista para departamento / coordinación (Pendientes, Aprobados, Todos). Académico o coordinación. */
     @GetMapping("/departamento")
     fun listarDepartamento(
         @RequestParam(required = false, defaultValue = "pendientes") estado: String,
-        @RequestParam(required = false) segmento: String?,
         @AuthenticationPrincipal principal: UsuarioPrincipal?,
     ): ResponseEntity<*> {
         if (principal == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build<Void>()
         if (!puedeVerBandejaDepartamento(principal.getRol())) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build<Void>()
         }
-        val lista = egresadoService.listarParaDepartamento(estado, principal.username, segmento)
+        val lista = egresadoService.listarParaDepartamento(estado, principal.username)
         return ResponseEntity.ok(lista)
     }
 
@@ -184,12 +178,11 @@ class EgresadoController(
         @AuthenticationPrincipal principal: UsuarioPrincipal?,
     ): ResponseEntity<*> {
         if (principal != null) {
-            val rolTokens = RolSoporte.tokensRol(principal.getRol())
-            val esAcademico = rolTokens.contains("academico")
-            // Coordinador / administrador (p. ej. rol compuesto) acceden sin restricción de carrera
-            if (!RolSoporte.esCoordinadorOAdmin(principal.getRol())) {
+            val rol = principal.getRol().trim().lowercase().replace(' ', '_')
+            // Coordinador accede a cualquier egresado sin restricción de modalidad/carrera
+            if (rol != "coordinador") {
                 when {
-                    esAcademico -> respuestaSiAcademicoSinCarrera(id, principal)?.let { return it }
+                    rol == "academico" -> respuestaSiAcademicoSinCarrera(id, principal)?.let { return it }
                     puedeVerBandejaDepartamento(principal.getRol()) ->
                         respuestaSiNoAccesoEgresadoBandeja(id, principal)?.let { return it }
                 }
@@ -261,24 +254,6 @@ class EgresadoController(
             mapOf(
                 "estado" to resultado.estado,
                 "titulo_similar" to (resultado.tituloSimilar ?: ""),
-                "expediente_estado" to (resultado.expedienteEstado ?: ""),
-            ),
-        )
-    }
-
-    /** Verifica si el número de control ya está registrado (mensajes de alta). */
-    @GetMapping("/verificar-numero-control")
-    fun verificarNumeroControlAlta(
-        @RequestParam numero_control: String,
-        @RequestParam(required = false) excluirId: String?,
-        @AuthenticationPrincipal principal: UsuarioPrincipal?,
-    ): ResponseEntity<*> {
-        if (principal == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build<Void>()
-        val r = egresadoService.verificarDisponibilidadNumeroControlParaAlta(numero_control, excluirId)
-        return ResponseEntity.ok(
-            mapOf(
-                "estado" to r.estado,
-                "expediente_estado" to (r.expedienteEstado ?: ""),
             ),
         )
     }
@@ -288,20 +263,6 @@ class EgresadoController(
         @Valid @RequestPart("datos") datos: EgresadoRequestDto,
         @RequestPart(value = "archivo", required = false) archivo: MultipartFile? = null,
     ): ResponseEntity<*> {
-        val dupCtrl = egresadoService.verificarDisponibilidadNumeroControlParaAlta(datos.numero_control, null)
-        if (dupCtrl.estado == "BLOQUEADO") {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(
-                mapOf("error" to mensajeConflictoNumeroControlAlta(dupCtrl.expedienteEstado)),
-            )
-        }
-        if (usuarioService.existeUsuarioConUsername(datos.numero_control)) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(
-                mapOf(
-                    "error" to
-                        "Este número de control ya está en uso para inicio de sesión. No puedes registrar otro egresado con el mismo número.",
-                ),
-            )
-        }
         val origResultado = originalidadService.verificar(datos.nombreProyecto ?: "")
         if (origResultado.estado == "BLOQUEADO") {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(
@@ -332,14 +293,24 @@ class EgresadoController(
         val (user, passwordPlana) = try {
             usuarioService.crearUsuarioEgresado(egresado.numero_control.trim(), oid)
         } catch (e: IllegalArgumentException) {
-            log.warn("Alta egresado id={}: usuario duplicado (carrera o condición de carrera): {}", idStr, e.message)
-            egresadoService.eliminar(idStr)
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(
-                mapOf(
-                    "error" to
-                        "Ese número de control ya tiene un usuario de acceso. El registro no se completó; inténtalo con otro número de control.",
-                ),
-            )
+            try {
+                usuarioService.crearOVincularUsuarioEgresado(egresado.numero_control.trim(), oid)
+            } catch (e2: Exception) {
+                log.warn(
+                    "Egresado creado pero no se pudo vincular usuario para control {}: {}",
+                    egresado.numero_control,
+                    e2.message,
+                )
+                return ResponseEntity.status(HttpStatus.CREATED).body(
+                    EgresadoResponseDto(
+                        id = idStr,
+                        numero_control = egresado.numero_control,
+                        credenciales_enviadas_correo = false,
+                        aviso_credenciales =
+                            "Egresado registrado. No se pudo crear o vincular el usuario: ${e.message ?: "error"}.",
+                    ),
+                )
+            }
         } catch (e: Exception) {
             log.error("Error al crear usuario egresado para id={}: {}", idStr, e.message, e)
             return ResponseEntity.status(HttpStatus.CREATED).body(
@@ -423,27 +394,6 @@ class EgresadoController(
             ResponseEntity.notFound().build<Void>()
         }
     }
-
-    /** No residencia (16 pasos): envío solicitud registro y anteproyecto al departamento académico. */
-    @PostMapping("/{id}/no-residencia/solicitar-registro-anteproyecto")
-    fun solicitarRegistroAnteproyectoNoResidencia(@PathVariable id: String): ResponseEntity<*> =
-        if (egresadoService.solicitarRegistroAnteproyectoNoResidencia(id)) ResponseEntity.ok().build<Void>()
-        else ResponseEntity.badRequest().body(mapOf("error" to "No se pudo registrar el envío (solo modalidades distintas a residencia)."))
-
-    @PostMapping("/{id}/no-residencia/confirmar-recepcion-trabajo-division")
-    fun confirmarRecepcionTrabajoNoResidencia(@PathVariable id: String): ResponseEntity<*> =
-        if (egresadoService.confirmarRecepcionTrabajoNoResidencia(id)) ResponseEntity.ok().build<Void>()
-        else ResponseEntity.badRequest().body(mapOf("error" to "No se pudo confirmar la recepción en división de estudios."))
-
-    @PostMapping("/{id}/no-residencia/solicitar-registro-liberacion-depto")
-    fun solicitarRegistroLiberacionNoResidencia(@PathVariable id: String): ResponseEntity<*> =
-        if (egresadoService.solicitarRegistroLiberacionNoResidencia(id)) ResponseEntity.ok().build<Void>()
-        else ResponseEntity.badRequest().body(mapOf("error" to "No se pudo registrar la solicitud de registro y liberación."))
-
-    @PostMapping("/{id}/no-residencia/confirmar-recepcion-registro-liberacion-depto")
-    fun confirmarRecepcionRegistroLiberacionNoResidencia(@PathVariable id: String): ResponseEntity<*> =
-        if (egresadoService.confirmarRecepcionRegistroLiberacionNoResidencia(id)) ResponseEntity.ok().build<Void>()
-        else ResponseEntity.badRequest().body(mapOf("error" to "No se pudo confirmar la recepción de registro y liberación."))
 
     /** Marca "recibido registro y liberación" desde departamento académico (solo Residencia). */
     @PostMapping("/{id}/liberar")
@@ -863,42 +813,6 @@ class EgresadoController(
         }
     }
 
-    @GetMapping("/{id}/documentacion-escaneada")
-    fun obtenerDocumentacionEscaneada(
-        @PathVariable id: String,
-        @AuthenticationPrincipal principal: UsuarioPrincipal?,
-    ): ResponseEntity<*> {
-        if (principal == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build<Void>()
-        respuestaSiAcademicoSinCarrera(id, principal)?.let { return it }
-        val doc = egresadoService.obtenerDocumentacionEscaneadaBytes(id) ?: return ResponseEntity.notFound().build<Void>()
-        val headers = HttpHeaders().apply {
-            set(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + doc.fileName.replace("\"", "%22") + "\"")
-        }
-        val mediaType = try { MediaType.parseMediaType(doc.contentType) } catch (_: Exception) { MediaType.APPLICATION_PDF }
-        return ResponseEntity.ok()
-            .headers(headers)
-            .contentType(mediaType)
-            .contentLength(doc.bytes.size.toLong())
-            .body(doc.bytes)
-    }
-
-    @PostMapping("/{id}/solicitar-documentacion-escaneada-nuevamente", consumes = [MediaType.APPLICATION_JSON_VALUE])
-    fun solicitarDocumentacionEscaneadaNuevamente(
-        @PathVariable id: String,
-        @RequestBody body: SolicitarReenvioDocumentacionEscaneadaRequestDto,
-        @AuthenticationPrincipal principal: UsuarioPrincipal?,
-    ): ResponseEntity<*> {
-        if (principal == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build<Void>()
-        respuestaSiAcademicoSinCarrera(id, principal)?.let { return it }
-        return if (egresadoService.solicitarDocumentacionEscaneadaNuevamente(id, body.observaciones)) {
-            ResponseEntity.ok().build<Void>()
-        } else {
-            ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
-                mapOf("error" to "No se pudo solicitar nuevamente. Verifica que el egresado ya haya enviado PDF y que aún no esté confirmado."),
-            )
-        }
-    }
-
     @PostMapping("/mi-seguimiento/documentacion-escaneada", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     fun miSeguimientoSubirDocumentacionEscaneada(
         @RequestPart("archivos") archivos: List<MultipartFile>?,
@@ -931,14 +845,11 @@ class EgresadoController(
      */
     private fun puedeVerBandejaDepartamento(rol: String?): Boolean {
         if (rol.isNullOrBlank()) return false
-        return RolSoporte.tieneAlgunRol(
-            rol,
-            "academico",
-            "coordinador",
-            "apoyo_titulacion",
-            "division_estudios_prof_admin",
-            "administrador",
-        )
+        val r = rol.trim().lowercase().replace(' ', '_')
+        return r == "academico" ||
+            r == "coordinador" ||
+            r == "apoyo_titulacion" ||
+            r == "division_estudios_prof_admin"
     }
 
     /** Académico con carreras asignadas no puede abrir expedientes de otras carreras. */
@@ -947,13 +858,6 @@ class EgresadoController(
         if (principal.getRol().trim().lowercase() != "academico") return null
         return respuestaSiNoAccesoEgresadoBandeja(id, principal)
     }
-
-    private fun mensajeConflictoNumeroControlAlta(expedienteEstado: String?): String =
-        when (expedienteEstado?.trim()) {
-            "vencido" -> "Este número de control ya está registrado; el expediente ya venció. No puedes duplicarlo."
-            "titulado" -> "Este número de control ya fue usado en un expediente titulado."
-            else -> "Este número de control ya está registrado; el expediente se encuentra en proceso."
-        }
 
     /** Coordinación / misma regla que la bandeja: residencia excluida donde aplica; carrera solo para académicos segmentados. */
     private fun respuestaSiNoAccesoEgresadoBandeja(id: String, principal: UsuarioPrincipal): ResponseEntity<*>? =

@@ -49,11 +49,6 @@ export interface EgresadoDetail {
   fecha_creacion?: string;
   fecha_actualizacion?: string;
   /** Fecha en que se marcó "Enviado al departamento académico" (paso 1.1). */
-  fecha_envio_solicitud_registro_anteproyecto_depto_academico?: string;
-  fecha_recepcion_trabajo_division_estudios_prof?: string;
-  fecha_solicitud_registro_liberacion_depto_academico?: string;
-  fecha_recepcion_registro_liberacion_depto_academico?: string;
-  fecha_liberacion_documento_coordinacion_cat?: string;
   fecha_enviado_departamento_academico?: string;
   /** Fecha en que el departamento recibió registro y liberación (paso 2). */
   fecha_recibido_registro_liberacion?: string;
@@ -68,15 +63,12 @@ export interface EgresadoDetail {
   fecha_asignacion_sinodales?: string;
   fecha_confirmacion_sinodales_recibidos?: string;
   fecha_agenda_acto_9_3?: string;
-  fecha_reagenda_acto_9_3?: string;
   fecha_creacion_anexo_9_3?: string;
   /** Confirmación de entrega del 9.3 a sinodales y sustentante (flujo residencia / DEP). */
   fecha_confirmacion_entrega_anexo_9_3?: string;
   fecha_solicitud_documentacion_escaneada?: string;
   fecha_envio_documentacion_escaneada_egresado?: string;
   fecha_confirmacion_documentacion_escaneada_recibida?: string;
-  fecha_solicitud_reenvio_documentacion_escaneada?: string;
-  observaciones_reenvio_documentacion_escaneada?: string;
 }
 
 // Datos personales dentro del detalle
@@ -196,13 +188,10 @@ export class EgresadoService {
   }
 
   // Pido un egresado por su id (el que viene de MongoDB)
-  obtenerPorId(id: string, aplicarScopeDepartamento?: boolean, cacheBust?: boolean): Observable<EgresadoDetail> {
+  obtenerPorId(id: string, aplicarScopeDepartamento?: boolean): Observable<EgresadoDetail> {
     let params = new HttpParams();
     if (typeof aplicarScopeDepartamento === 'boolean') {
       params = params.set('aplicar_scope_departamento', String(aplicarScopeDepartamento));
-    }
-    if (cacheBust) {
-      params = params.set('_cb', String(Date.now()));
     }
     return this.http.get<EgresadoDetail>(`${API}/${id}`, { params });
   }
@@ -213,12 +202,8 @@ export class EgresadoService {
   }
 
   /** Seguimiento del egresado: obtiene su propio registro (requiere sesión de egresado). */
-  getMiSeguimiento(cacheBust?: boolean): Observable<EgresadoDetail> {
-    let params = new HttpParams();
-    if (cacheBust) {
-      params = params.set('_cb', String(Date.now()));
-    }
-    return this.http.get<EgresadoDetail>(`${API}/mi-seguimiento`, { params });
+  getMiSeguimiento(): Observable<EgresadoDetail> {
+    return this.http.get<EgresadoDetail>(`${API}/mi-seguimiento`);
   }
 
   // Envío los datos del formulario y el archivo en FormData (multipart) al POST del backend
@@ -239,34 +224,16 @@ export class EgresadoService {
     return this.http.post(`${API}/${id}/enviar-departamento-academico`, {});
   }
 
-  solicitarRegistroAnteproyectoNoResidencia(id: string): Observable<unknown> {
-    return this.http.post(`${API}/${id}/no-residencia/solicitar-registro-anteproyecto`, {});
-  }
-
-  confirmarRecepcionTrabajoNoResidencia(id: string): Observable<unknown> {
-    return this.http.post(`${API}/${id}/no-residencia/confirmar-recepcion-trabajo-division`, {});
-  }
-
-  solicitarRegistroLiberacionNoResidencia(id: string): Observable<unknown> {
-    return this.http.post(`${API}/${id}/no-residencia/solicitar-registro-liberacion-depto`, {});
-  }
-
-  confirmarRecepcionRegistroLiberacionNoResidencia(id: string): Observable<unknown> {
-    return this.http.post(`${API}/${id}/no-residencia/confirmar-recepcion-registro-liberacion-depto`, {});
-  }
-
   /** Conteos para pestañas (solo rol academico). */
-  getDepartamentoCounts(segmento?: string | null): Observable<DepartamentoCounts> {
-    let params = new HttpParams();
-    if (segmento?.trim()) params = params.set('segmento', segmento.trim());
-    return this.http.get<DepartamentoCounts>(`${API}/departamento/counts`, { params });
+  getDepartamentoCounts(): Observable<DepartamentoCounts> {
+    return this.http.get<DepartamentoCounts>(`${API}/departamento/counts`);
   }
 
   /** Lista para departamento académico por estado: pendientes, en_correccion, aprobados, todos (solo rol academico). */
-  listarDepartamento(estado: string, segmento?: string | null): Observable<DepartamentoListItem[]> {
-    let params = new HttpParams().set('estado', estado);
-    if (segmento?.trim()) params = params.set('segmento', segmento.trim());
-    return this.http.get<DepartamentoListItem[]>(`${API}/departamento`, { params });
+  listarDepartamento(estado: string): Observable<DepartamentoListItem[]> {
+    return this.http.get<DepartamentoListItem[]>(`${API}/departamento`, {
+      params: { estado },
+    });
   }
 
   /** Lista revisiones del egresado (solo rol academico). */
@@ -421,28 +388,10 @@ export class EgresadoService {
   }
 
   /** Comprueba originalidad del título contra registros existentes. */
-  verificarOriginalidad(
-    titulo: string,
-    excluirId?: string,
-  ): Observable<{ estado: string; titulo_similar: string; expediente_estado?: string }> {
+  verificarOriginalidad(titulo: string, excluirId?: string): Observable<{ estado: string; titulo_similar: string }> {
     let params = new HttpParams().set('titulo', titulo);
     if (excluirId) params = params.set('excluirId', excluirId);
-    return this.http.get<{ estado: string; titulo_similar: string; expediente_estado?: string }>(
-      `${API}/verificar-originalidad`,
-      { params },
-    );
-  }
-
-  /** Comprueba si el número de control ya está en uso (alta / edición). */
-  verificarNumeroControlAlta(
-    numeroControl: string,
-    excluirId?: string,
-  ): Observable<{ estado: string; expediente_estado?: string }> {
-    let params = new HttpParams().set('numero_control', numeroControl.trim());
-    if (excluirId) params = params.set('excluirId', excluirId);
-    return this.http.get<{ estado: string; expediente_estado?: string }>(`${API}/verificar-numero-control`, {
-      params,
-    });
+    return this.http.get<{ estado: string; titulo_similar: string }>(`${API}/verificar-originalidad`, { params });
   }
 
   solicitarDocumentacionEscaneada(id: string): Observable<unknown> {
@@ -451,24 +400,6 @@ export class EgresadoService {
 
   confirmarDocumentacionEscaneadaRecibida(id: string): Observable<unknown> {
     return this.http.post(`${API}/${id}/confirmar-documentacion-escaneada-recibida`, {});
-  }
-
-  getDocumentacionEscaneada(egresadoId: string): Observable<{ blob: Blob; contentType: string; fileName: string }> {
-    return this.http
-      .get(`${API}/${egresadoId}/documentacion-escaneada`, { responseType: 'blob', observe: 'response' })
-      .pipe(
-        map((res) => {
-          const ct = res.headers.get('Content-Type') || 'application/pdf';
-          const disp = res.headers.get('Content-Disposition') || '';
-          const match = disp.match(/filename[*]?=(?:UTF-8'')?"?([^";\n]+)"?/i);
-          const fileName = match ? match[1].trim() : 'documentacion-escaneada.pdf';
-          return { blob: res.body!, contentType: ct, fileName };
-        }),
-      );
-  }
-
-  solicitarDocumentacionEscaneadaNuevamente(id: string, observaciones: string): Observable<unknown> {
-    return this.http.post(`${API}/${id}/solicitar-documentacion-escaneada-nuevamente`, { observaciones });
   }
 
   /** Egresado: sube uno o más PDF (multipart, campo `archivos`). */

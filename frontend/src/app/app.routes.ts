@@ -46,14 +46,6 @@ export const routes: Routes = [
     canActivate: [coordinadorGuard],
   },
   {
-    path: 'home/departamento-academico',
-    loadComponent: () =>
-      import('./pages/departamento-academico-menu/departamento-academico-menu.component').then(
-        (m) => m.DepartamentoAcademicoMenuComponent,
-      ),
-    canActivate: [coordinadorGuard],
-  },
-  {
     path: 'home/revisiones',
     loadComponent: () =>
       import('./pages/departamento-academico/departamento-academico.component').then((m) => m.DepartamentoAcademicoComponent),

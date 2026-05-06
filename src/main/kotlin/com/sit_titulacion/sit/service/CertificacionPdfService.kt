@@ -145,10 +145,17 @@ class CertificacionPdfService(
         }
     }
 
-    private fun generarCertUuid(): String {
+    fun generarCertUuid(): String {
         val raw = UUID.randomUUID().toString().replace("-", "").uppercase()
         return "SIT-${raw.substring(0, 4)}-${raw.substring(4, 8)}-${raw.substring(8, 12)}"
     }
+
+    fun generarQrDataUri(certUuid: String, tamanio: Int = 200): String {
+        val qrBytes = generarQrPng("${baseUrl.trimEnd('/')}/#/verificar/$certUuid", tamanio)
+        return "data:image/png;base64," + java.util.Base64.getEncoder().encodeToString(qrBytes)
+    }
+
+    fun certificarAnexoPdf(pdfBytes: ByteArray): ByteArray? = firmarPdf(pdfBytes)
 
     private fun calcularSha256(bytes: ByteArray): String {
         val digest = MessageDigest.getInstance("SHA-256")

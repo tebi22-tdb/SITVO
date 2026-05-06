@@ -1,11 +1,11 @@
 import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { EgresadoForm, MODALIDADES_CURSO_TITULACION } from '../../../core/datos';
+import { EgresadoForm } from '../../../core/datos';
 import { EgresadoDetail, EgresadoService } from '../../../services/egresado.service';
 import { CatalogoService } from '../../../services/catalogo.service';
 import { Subject } from 'rxjs';
-import { debounceTime, distinctUntilChanged, switchMap, of, takeUntil, catchError, startWith } from 'rxjs';
+import { debounceTime, distinctUntilChanged, switchMap, of, takeUntil, catchError } from 'rxjs';
 
 export interface AgregarEgresadoPayload {
   datos: EgresadoForm;
@@ -45,11 +45,6 @@ export class NuevoEgresadoComponent implements OnChanges, OnInit, OnDestroy {
 
   originalidadEstado: 'LIBRE' | 'ADVERTENCIA' | 'BLOQUEADO' | 'comprobando' | null = null;
   originalidadTituloSimilar: string | null = null;
-  /** vencido | titulado | en_proceso cuando originalidadEstado === BLOQUEADO */
-  originalidadExpedienteEstado: 'vencido' | 'titulado' | 'en_proceso' | null = null;
-
-  controlAltaEstado: 'LIBRE' | 'BLOQUEADO' | 'comprobando' | null = null;
-  controlAltaExpedienteEstado: 'vencido' | 'titulado' | 'en_proceso' | null = null;
   private destroy$ = new Subject<void>();
 
   constructor(
@@ -83,13 +78,6 @@ export class NuevoEgresadoComponent implements OnChanges, OnInit, OnDestroy {
     this.form.get('modalidad')?.valueChanges.subscribe(() => this.actualizarValidadoresAsesores());
   }
 
-  /** Lista del `<select>` de modalidad: catálogo completo o solo curso de titulación. */
-  get opcionesModalidad(): string[] {
-    const curso = this.form?.get('curso_titulacion')?.value === true;
-    if (curso) return [...MODALIDADES_CURSO_TITULACION];
-    return this.modalidades;
-  }
-
   ngOnInit(): void {
     this.catalogoService.carreras$.pipe(takeUntil(this.destroy$))
       .subscribe(lista => (this.carreras = lista));
@@ -98,11 +86,6 @@ export class NuevoEgresadoComponent implements OnChanges, OnInit, OnDestroy {
     this.catalogoService.modalidades$.pipe(takeUntil(this.destroy$))
       .subscribe(lista => (this.modalidades = lista.map(m => m.nombre)));
 
-    this.form
-      .get('curso_titulacion')
-      ?.valueChanges.pipe(startWith(this.form.get('curso_titulacion')?.value), distinctUntilChanged(), takeUntil(this.destroy$))
-      .subscribe(() => this.alinearModalidadSiNoAplica());
-
     this.form.get('nombre_proyecto')!.valueChanges.pipe(
       debounceTime(600),
       distinctUntilChanged(),
@@ -110,7 +93,6 @@ export class NuevoEgresadoComponent implements OnChanges, OnInit, OnDestroy {
         const t = (titulo || '').trim();
         if (t.length < 5) {
           this.originalidadEstado = null;
-          this.originalidadExpedienteEstado = null;
           return of(null);
         }
         this.originalidadEstado = 'comprobando';
@@ -123,41 +105,10 @@ export class NuevoEgresadoComponent implements OnChanges, OnInit, OnDestroy {
     ).subscribe(resultado => {
       if (resultado === null) {
         if (this.originalidadEstado === 'comprobando') this.originalidadEstado = null;
-        this.originalidadExpedienteEstado = null;
         return;
       }
       this.originalidadEstado = resultado.estado as 'LIBRE' | 'ADVERTENCIA' | 'BLOQUEADO';
       this.originalidadTituloSimilar = resultado.titulo_similar || null;
-      const ex = (resultado.expediente_estado || '').trim();
-      this.originalidadExpedienteEstado =
-        ex === 'vencido' || ex === 'titulado' || ex === 'en_proceso' ? ex : null;
-    });
-
-    this.form.get('numero_control')!.valueChanges.pipe(
-      debounceTime(500),
-      distinctUntilChanged(),
-      switchMap((nc) => {
-        const t = (nc || '').trim();
-        if (t.length < 4) {
-          this.controlAltaEstado = null;
-          this.controlAltaExpedienteEstado = null;
-          return of(null);
-        }
-        this.controlAltaEstado = 'comprobando';
-        const excluirId = this.egresadoParaEditar?.id;
-        return this.egresadoService.verificarNumeroControlAlta(t, excluirId).pipe(catchError(() => of(null)));
-      }),
-      takeUntil(this.destroy$),
-    ).subscribe((resultado) => {
-      if (resultado === null) {
-        if (this.controlAltaEstado === 'comprobando') this.controlAltaEstado = null;
-        this.controlAltaExpedienteEstado = null;
-        return;
-      }
-      this.controlAltaEstado = resultado.estado as 'LIBRE' | 'BLOQUEADO';
-      const ex = (resultado.expediente_estado || '').trim();
-      this.controlAltaExpedienteEstado =
-        ex === 'vencido' || ex === 'titulado' || ex === 'en_proceso' ? ex : null;
     });
   }
 
@@ -204,40 +155,6 @@ export class NuevoEgresadoComponent implements OnChanges, OnInit, OnDestroy {
 
   get editando(): boolean {
     return !!this.egresadoParaEditar;
-  }
-
-  /** Mensaje bajo «Nombre del proyecto» cuando el título está bloqueado. */
-  get mensajeBloqueoNombreProyecto(): string {
-    if (this.originalidadEstado !== 'BLOQUEADO') return '';
-    if (this.originalidadExpedienteEstado === 'vencido') {
-      return 'Este nombre de proyecto ya existe; el expediente asociado ya venció. No puedes usarlo de nuevo.';
-    }
-    if (this.originalidadExpedienteEstado === 'titulado') {
-      return 'Este nombre de proyecto ya se usó en un expediente titulado.';
-    }
-    return 'Este nombre de proyecto ya existe; el expediente se encuentra en proceso.';
-  }
-
-  /** Mensaje bajo «Número de control» cuando ya está registrado. */
-  get mensajeBloqueoNumeroControl(): string {
-    if (this.controlAltaEstado !== 'BLOQUEADO') return '';
-    if (this.controlAltaExpedienteEstado === 'vencido') {
-      return 'Este número de control ya está registrado; el expediente ya venció. No puedes duplicarlo.';
-    }
-    if (this.controlAltaExpedienteEstado === 'titulado') {
-      return 'Este número de control ya fue usado en un expediente titulado.';
-    }
-    return 'Este número de control ya está registrado; el expediente se encuentra en proceso.';
-  }
-
-  /** Si la modalidad actual no está en las opciones visibles (por cambiar el checkbox), se limpia. */
-  private alinearModalidadSiNoAplica(): void {
-    const opts = this.opcionesModalidad;
-    const cur = this.form.get('modalidad')?.value as string | undefined;
-    if (cur && !opts.includes(cur)) {
-      this.form.patchValue({ modalidad: '' });
-    }
-    this.actualizarValidadoresAsesores();
   }
 
   /** Según la modalidad, exige asesor interno/externo o director y asesores 1 y 2. */
@@ -302,7 +219,6 @@ export class NuevoEgresadoComponent implements OnChanges, OnInit, OnDestroy {
       return;
     }
     if (this.originalidadEstado === 'BLOQUEADO') return;
-    if (this.controlAltaEstado === 'BLOQUEADO') return;
     if (!this.editando && !this.archivoSeleccionado) {
       this.archivoRequeridoError = true;
       return;

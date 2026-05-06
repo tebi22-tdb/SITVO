@@ -51,8 +51,8 @@ class SeedCatalogosRunner(
         // ── Modalidades ───────────────────────────────────────────────────────
         data class ModalidadSeed(val nombre: String, val meses: Int?, val esResidencia: Boolean)
         listOf(
-            ModalidadSeed("Tesis",                   meses = 12, esResidencia = false),
-            ModalidadSeed("Tesina",                  meses = 12, esResidencia = false),
+            ModalidadSeed("Tesis",                   meses = 18, esResidencia = false),
+            ModalidadSeed("Tesina",                  meses = 18, esResidencia = false),
             ModalidadSeed("Residencia Profesional",  meses = 6,  esResidencia = true),
             ModalidadSeed("CENEVAL",                 meses = null, esResidencia = false),
             ModalidadSeed("Proyecto de Investigación", meses = 12, esResidencia = false),
