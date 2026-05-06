@@ -75,6 +75,11 @@ interface EgresadoRepository : MongoRepository<Egresado, ObjectId> {
     @Query("{ 'cert_uuid' : ?0 }")
     fun findByCertUuid(certUuid: String): Egresado?
 
+    /** Busca en los tres campos UUID (documento principal, anexo 9.1, anexo 9.3). */
+    @Meta(maxExecutionTimeMs = 5000)
+    @Query("{ \$or: [{'cert_uuid': ?0}, {'cert_uuid_91': ?0}, {'cert_uuid_93': ?0}] }")
+    fun findByCertUuidAny(certUuid: String): Egresado?
+
     /** Repositorio público: egresados por estado_general (p. ej. "titulado"). */
     @Meta(maxExecutionTimeMs = 5000)
     @Query("{ 'estado_general' : ?0 }")

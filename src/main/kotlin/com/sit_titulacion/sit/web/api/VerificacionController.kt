@@ -17,15 +17,23 @@ class VerificacionController(
 
     @GetMapping("/{uuid}")
     fun verificar(@PathVariable uuid: String): ResponseEntity<Map<String, Any?>> {
-        val egresado = egresadoRepository.findByCertUuid(uuid.trim())
+        val trimmed = uuid.trim()
+        val egresado = egresadoRepository.findByCertUuidAny(trimmed)
         return if (egresado != null) {
             val p = egresado.datos_personales
             val nombre = listOf(p.nombre, p.apellido_paterno, p.apellido_materno)
                 .filter { !it.isNullOrBlank() }
                 .joinToString(" ")
+            val documento = when (trimmed) {
+                egresado.cert_uuid -> "Documento principal"
+                egresado.certUuid91 -> "Anexo 9.1"
+                egresado.certUuid93 -> "Anexo 9.3"
+                else -> "Documento"
+            }
             ResponseEntity.ok(
                 mapOf(
                     "valido" to true,
+                    "documento" to documento,
                     "nombre" to nombre,
                     "numero_control" to egresado.numero_control,
                     "modalidad" to egresado.datos_proyecto.modalidad,

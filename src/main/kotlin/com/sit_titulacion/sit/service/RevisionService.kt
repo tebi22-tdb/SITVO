@@ -18,6 +18,7 @@ class RevisionService(
     private val revisionRepository: RevisionRepository,
     private val egresadoRepository: EgresadoRepository,
     private val certService: CertificacionPdfService,
+    private val catalogoService: CatalogoService,
 ) {
     private val log = LoggerFactory.getLogger(RevisionService::class.java)
     private val formatter = DateTimeFormatter.ISO_INSTANT
@@ -54,8 +55,7 @@ class RevisionService(
         if (guardada.resultado == "aprobado") {
             val eg = egresadoRepository.findById(oid).orElse(null)
             if (eg != null) {
-                val esResidencia =
-                    eg.datos_proyecto.modalidad.trim().equals("Residencia Profesional", ignoreCase = true)
+                val esResidencia = catalogoService.esResidenciaPorNombre(eg.datos_proyecto.modalidad)
                 if (!esResidencia &&
                     eg.fechaEnviadoDepartamentoAcademico != null &&
                     eg.fechaRecibidoRegistroLiberacion == null

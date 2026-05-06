@@ -47,6 +47,8 @@ data class Egresado(
     val cert_uuid: String? = null,
     val cert_hash: String? = null,
     @Field("fecha_certificacion") val fechaCertificacion: Instant? = null,
+    @Field("cert_uuid_91") val certUuid91: String? = null,
+    @Field("cert_uuid_93") val certUuid93: String? = null,
     @Field("gridfs_id_doc_final") val gridfsIdDocFinal: ObjectId? = null,
     @Field("fecha_subida_doc_final") val fechaSubidaDocFinal: Instant? = null,
     @Field("fecha_titulacion") val fechaTitulacion: Instant? = null,

@@ -73,6 +73,7 @@ class EgresadoService(
     private val htmlAnexoPdfService: HtmlAnexoPdfService,
     private val revisionService: RevisionService,
     private val certService: CertificacionPdfService,
+    private val catalogoService: CatalogoService,
 ) {
     private val log = LoggerFactory.getLogger(EgresadoService::class.java)
 
@@ -586,13 +587,21 @@ class EgresadoService(
         val e = cargarEgresadoPorId(id) ?: return null
         if (e.fechaConfirmacionRecibidosAnexoXxxiXxxii == null) return null
         val ahora = Instant.now()
-        if (e.fechaCreacionAnexo91 == null) {
-            egresadoRepository.save(e.copy(fechaCreacionAnexo91 = ahora, fecha_actualizacion = ahora))
+        val certUuid91 = e.certUuid91 ?: certService.generarCertUuid()
+        if (e.fechaCreacionAnexo91 == null || e.certUuid91 == null) {
+            egresadoRepository.save(
+                e.copy(
+                    fechaCreacionAnexo91 = e.fechaCreacionAnexo91 ?: ahora,
+                    certUuid91 = certUuid91,
+                    fecha_actualizacion = ahora,
+                ),
+            )
         }
         val destinatarioServicios =
             env.getProperty("sit.anexo91.destinatario-servicios-escolares")?.trim().orEmpty()
         val destinatarioServiciosFinal =
             if (destinatarioServicios.isNotEmpty()) destinatarioServicios else "ROMEO ALBERTO ANGELES PEREZ"
+        val qrDataUri = certService.generarQrDataUri(certUuid91)
         val valores =
             construirValoresPlantillaHtml(
                 e,
@@ -601,9 +610,11 @@ class EgresadoService(
                     "FECHA_CARTA" to fechaCartaEspanola(ahora),
                     "TEXTO_OPCION_TI" to textoOpcionTitulacionIntegral(e.datos_proyecto.modalidad),
                     "DESTINATARIO_SERVICIOS_ESCOLARES" to destinatarioServiciosFinal,
+                    "QR_CODE" to qrDataUri,
                 ),
             )
-        return htmlAnexoPdfService.generarDesdeClasspath("templates/html/anexo-9-1.html", valores)
+        val pdfHtml = htmlAnexoPdfService.generarDesdeClasspath("templates/html/anexo-9-1.html", valores) ?: return null
+        return certService.certificarAnexoPdf(pdfHtml) ?: pdfHtml
     }
 
     fun confirmarEntregaAnexo91(id: String): Boolean {
@@ -703,8 +714,15 @@ class EgresadoService(
         val e = cargarEgresadoPorId(id) ?: return null
         if (e.fechaAgendaActo93 == null) return null
         val ahora = Instant.now()
-        if (e.fechaCreacionAnexo93 == null) {
-            egresadoRepository.save(e.copy(fechaCreacionAnexo93 = ahora, fecha_actualizacion = ahora))
+        val certUuid93 = e.certUuid93 ?: certService.generarCertUuid()
+        if (e.fechaCreacionAnexo93 == null || e.certUuid93 == null) {
+            egresadoRepository.save(
+                e.copy(
+                    fechaCreacionAnexo93 = e.fechaCreacionAnexo93 ?: ahora,
+                    certUuid93 = certUuid93,
+                    fecha_actualizacion = ahora,
+                ),
+            )
         }
         val zona = ZoneId.systemDefault()
         val acto = e.fechaAgendaActo93!!
@@ -717,6 +735,7 @@ class EgresadoService(
         val horaActo = String.format(Locale.ROOT, "%02d:%02d", zActo.hour, zActo.minute)
         val jefeDivisionNombre =
             env.getProperty("sit.anexo93.jefe-division-nombre", "MANUEL FABIAN ROJAS").trim()
+        val qrDataUri = certService.generarQrDataUri(certUuid93)
         val valores =
             construirValoresPlantillaHtml(
                 e,
@@ -733,9 +752,11 @@ class EgresadoService(
                     "VOCAL" to (e.sinodalesTribunal?.vocal ?: ""),
                     "VOCAL_SUPLENTE" to (e.sinodalesTribunal?.vocal_suplente ?: ""),
                     "JEFE_DIVISION_NOMBRE" to jefeDivisionNombre,
+                    "QR_CODE" to qrDataUri,
                 ),
             )
-        return htmlAnexoPdfService.generarDesdeClasspath("templates/html/anexo-9-3.html", valores)
+        val pdfHtml = htmlAnexoPdfService.generarDesdeClasspath("templates/html/anexo-9-3.html", valores) ?: return null
+        return certService.certificarAnexoPdf(pdfHtml) ?: pdfHtml
     }
 
     /** Marca entrega del anexo 9.3 a sinodales y sustentante (solo tras generar el PDF). */
@@ -1015,7 +1036,7 @@ class EgresadoService(
     }
 
     private fun esResidenciaProfesional(e: Egresado): Boolean =
-        e.datos_proyecto.modalidad.trim().equals("Residencia Profesional", ignoreCase = true)
+        catalogoService.esResidenciaPorNombre(e.datos_proyecto.modalidad)
 
     private fun ultimaRevisionResultado(e: Egresado): String? {
         val oid = e.id ?: return null
@@ -1238,18 +1259,8 @@ class EgresadoService(
         return true
     }
 
-    private fun mesesPorModalidad(modalidad: String): Long? {
-        val m = modalidad.trim().lowercase()
-        return when {
-            m.contains("residencia")   -> 6L
-            m.contains("tesina")       -> 18L
-            m.contains("tesis")        -> 18L
-            m.contains("curso")        -> 12L
-            m.contains("investigaci")  -> 12L
-            m.contains("ceneval")      -> null
-            else                       -> 12L
-        }
-    }
+    private fun mesesPorModalidad(modalidad: String): Long? =
+        catalogoService.mesesVigenciaPorNombre(modalidad)
 
     private fun verificarYMarcarVencido(e: Egresado): Egresado {
         if (e.estado_general == "titulado" || e.estado_general == "vencido") return e

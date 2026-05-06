@@ -6,7 +6,7 @@ import { DomSanitizer, SafeResourceUrl, SafeUrl } from '@angular/platform-browse
 import { Subscription } from 'rxjs';
 import { HeaderComponent } from '../../layout/header/header.component';
 import { AuthService } from '../../services/auth.service';
-import { obtenerSegmentoAcademicoDef } from '../../core/segmentos-academicos';
+import { CatalogoService } from '../../services/catalogo.service';
 import { EgresadoService, DepartamentoListItem, DepartamentoCounts } from '../../services/egresado.service';
 
 type TabEstado = 'pendientes' | 'en_correccion' | 'aprobados' | 'sinodales' | 'todos';
@@ -61,6 +61,7 @@ export class DepartamentoAcademicoComponent implements OnInit, OnDestroy {
     private authService: AuthService,
     private router: Router,
     private sanitizer: DomSanitizer,
+    private catalogoService: CatalogoService,
   ) {}
 
   ngOnDestroy(): void {
@@ -138,7 +139,7 @@ export class DepartamentoAcademicoComponent implements OnInit, OnDestroy {
 
   /** Abre Revisión de documento (solo para modalidades que no son Residencia Profesional). */
   irARevision(item: DepartamentoListItem): void {
-    if (item.modalidad === 'Residencia Profesional') return;
+    if (this.catalogoService.esResidencia(item.modalidad ?? '')) return;
     if (this.authService.isAcademico()) {
       this.router.navigate(['/departamento-academico/revision', item.id]);
     } else {
@@ -174,11 +175,11 @@ export class DepartamentoAcademicoComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     const usuario = this.authService.getUsuario();
-    const segmento = obtenerSegmentoAcademicoDef(usuario?.segmento_academico ?? '');
-    this.esModoRevision = !segmento && !(usuario?.carreras_asignadas?.length ?? 0);
-    this.tituloDepartamento = this.esModoRevision
-      ? 'Coordinacion de apoyo a la titulacion'
-      : (segmento?.nombre ?? 'Coordinacion de apoyo a la titulacion');
+    const nombreDept =
+      this.catalogoService.nombreDepartamentoPorSlug(usuario?.segmento_academico ?? '') ??
+      this.catalogoService.inferirNombreDepartamentoPorCarreras(usuario?.carreras_asignadas ?? []);
+    this.esModoRevision = !nombreDept && !(usuario?.carreras_asignadas?.length ?? 0);
+    this.tituloDepartamento = nombreDept ?? 'Coordinacion de apoyo a la titulacion';
     this.cargarCounts();
     this.cargarLista();
   }
